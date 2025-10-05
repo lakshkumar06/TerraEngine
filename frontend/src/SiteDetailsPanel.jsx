@@ -69,102 +69,176 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
   // Find the crop match for this region
   const regionMatch = cropMatches?.top_matches?.find(match => match.region === site.name)
 
+  const getCompatibilityLevel = (score) => {
+    if (score >= 5) return { level: 'Excellent', color: 'green', bg: 'bg-green-900/30', border: 'border-green-500' }
+    if (score >= 3) return { level: 'Good', color: 'yellow', bg: 'bg-yellow-900/30', border: 'border-yellow-500' }
+    if (score >= 1) return { level: 'Moderate', color: 'orange', bg: 'bg-orange-900/30', border: 'border-orange-500' }
+    return { level: 'Poor', color: 'red', bg: 'bg-red-900/30', border: 'border-red-500' }
+  }
+
+  const getRecommendations = (site, regionMatch) => {
+    const recommendations = []
+    
+    if (site.perchlorate_wt_pct > 0.5) {
+      recommendations.push({
+        type: 'warning',
+        title: 'High Perchlorate Content',
+        message: 'Soil treatment required to neutralize perchlorates before planting'
+      })
+    }
+    
+    if (site.ph && site.ph.includes('High')) {
+      recommendations.push({
+        type: 'info',
+        title: 'Alkaline Soil',
+        message: 'Consider acidifying treatments or select pH-tolerant crop varieties'
+      })
+    }
+    
+    if (site.terrain_type && site.terrain_type.includes('smooth')) {
+      recommendations.push({
+        type: 'success',
+        title: 'Suitable Terrain',
+        message: 'Flat terrain ideal for automated farming equipment and irrigation systems'
+      })
+    }
+    
+    if (regionMatch && regionMatch.score < 3) {
+      recommendations.push({
+        type: 'warning',
+        title: 'Low Compatibility',
+        message: 'Consider alternative crops or extensive soil preparation before planting'
+      })
+    }
+    
+    return recommendations
+  }
+
   return (
-    <div className={`absolute top-5 right-5 w-106 overflow-y-scroll  bottom-5  z-50 rounded-[20px] bg-gray-900 ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
+    <div className={`absolute top-5 right-5 w-106 overflow-y-scroll bottom-5 z-50 rounded-[20px] bg-gray-900 ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
       <div className="h-full bg-gray-900 text-white p-5 rounded-[20px]">
-      <button 
-        onClick={handleClose}
-        className="bg-red-500 text-white border-none px-4 py-2 rounded cursor-pointer mb-5 transition-colors duration-300 hover:bg-red-600"
-      >
-        Close
-      </button>
-      
-      <h2 className="text-red-500 mb-5 text-xl font-bold">
-        {site.name}
-      </h2>
-      
-      <div className="mb-4">
-        <strong>Coordinates:</strong><br />
-        Latitude: {site.latitude}<br />
-        Longitude: {site.longitude}
-      </div>
-      
-      {site.elevation && (
-        <div className="mb-4">
-          <strong>Elevation:</strong> {site.elevation} m
-        </div>
-      )}
-      
-      {site.ph && (
-        <div className="mb-4">
-          <strong>pH Level:</strong> {site.ph}
-        </div>
-      )}
-      
-      {site.perchlorate_wt_pct && (
-        <div className="mb-4">
-          <strong>Perchlorate:</strong> {site.perchlorate_wt_pct}%
-        </div>
-      )}
-      
-      {site.water_release_wt_pct && (
-        <div className="mb-4">
-          <strong>Water Release:</strong> {site.water_release_wt_pct}%
-        </div>
-      )}
-      
-      {site.terrain_type && (
-        <div className="mb-4">
-          <strong>Terrain Type:</strong> {site.terrain_type}
-        </div>
-      )}
-      
-      {site.major_minerals && (
-        <div className="mb-4">
-          <strong>Major Minerals:</strong> {site.major_minerals}
-        </div>
-      )}
-      
-      {site.notes && (
-        <div className="mb-6">
-          <strong>Notes:</strong> {site.notes}
-        </div>
-      )}
-      
-      {/* Crop Compatibility Section */}
-      {regionMatch && cropMatches && (
-        <div className="mt-6 border-t border-gray-700 pt-6">
-          <h3 className="text-red-500 mb-4 text-lg font-semibold">
-            {cropMatches.crop} Compatibility
-          </h3>
-          
-          <div className="bg-gray-800 rounded-lg p-4 mb-4">
+        <button 
+          onClick={handleClose}
+          className="bg-red-500 text-white border-none px-4 py-2 rounded cursor-pointer mb-5 transition-colors duration-300 hover:bg-red-600"
+        >
+          Close
+        </button>
+        
+        <h2 className="text-red-500 mb-5 text-xl font-bold">
+          {site.name}
+        </h2>
+        
+        {/* Compatibility Overview */}
+        {regionMatch && cropMatches && (
+          <div className={`mb-6 rounded-lg p-4 border ${getCompatibilityLevel(regionMatch.score).bg} ${getCompatibilityLevel(regionMatch.score).border}`}>
             <div className="flex justify-between items-center mb-3">
-              <h4 className="font-semibold text-white">Compatibility Score</h4>
-              <div className={`text-2xl font-bold ${
-                regionMatch.score >= 5 ? 'text-green-400' :
-                regionMatch.score >= 2 ? 'text-yellow-400' :
-                regionMatch.score >= 0 ? 'text-orange-400' : 'text-red-400'
-              }`}>
-                {regionMatch.score}
+              <h3 className="text-lg font-semibold text-white">Growing Compatibility</h3>
+              <div className={`text-3xl font-bold text-${getCompatibilityLevel(regionMatch.score).color}-400`}>
+                {regionMatch.score}/10
               </div>
             </div>
-            
-            <div className="text-sm">
-              <strong>Compatibility Factors:</strong>
-              <ul className="mt-2 pl-4">
-                {regionMatch.reasons.map((reason, index) => (
-                  <li key={index} className="text-gray-300 mb-1">
-                    • {reason}
-                  </li>
-                ))}
-              </ul>
+            <div className={`text-sm font-medium text-${getCompatibilityLevel(regionMatch.score).color}-300`}>
+              {getCompatibilityLevel(regionMatch.score).level} match for {cropMatches.crop}
+            </div>
+          </div>
+        )}
+        
+        {/* Key Compatibility Factors */}
+        {regionMatch && (
+          <div className="mb-6">
+            <h3 className="text-red-400 mb-3 text-lg font-semibold">Key Compatibility Factors</h3>
+            <div className="space-y-2">
+              {regionMatch.reasons.map((reason, index) => (
+                <div key={index} className="bg-gray-800 rounded p-3 text-sm">
+                  <div className="flex items-start">
+                    <span className={`w-2 h-2 rounded-full mt-2 mr-3 ${
+                      reason.toLowerCase().includes('good') || reason.toLowerCase().includes('suitable') ? 'bg-green-400' :
+                      reason.toLowerCase().includes('moderate') || reason.toLowerCase().includes('acceptable') ? 'bg-yellow-400' :
+                      reason.toLowerCase().includes('poor') || reason.toLowerCase().includes('unsuitable') ? 'bg-red-400' : 'bg-gray-400'
+                    }`}></span>
+                    <span className="text-gray-300">{reason}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Recommendations */}
+        {regionMatch && (
+          <div className="mb-6">
+            <h3 className="text-red-400 mb-3 text-lg font-semibold">Growing Recommendations</h3>
+            <div className="space-y-3">
+              {getRecommendations(site, regionMatch).map((rec, index) => (
+                <div key={index} className={`rounded-lg p-3 border-l-4 ${
+                  rec.type === 'success' ? 'bg-green-900/20 border-green-400' :
+                  rec.type === 'warning' ? 'bg-yellow-900/20 border-yellow-400' :
+                  rec.type === 'info' ? 'bg-blue-900/20 border-blue-400' : 'bg-gray-800'
+                }`}>
+                  <div className="font-medium text-white text-sm mb-1">{rec.title}</div>
+                  <div className="text-gray-300 text-xs">{rec.message}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Site Details (Minimized) */}
+        <div className="mb-6">
+          <h3 className="text-red-400 mb-3 text-lg font-semibold">Site Conditions</h3>
+          <div className="bg-gray-800 rounded-lg p-4 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              {site.elevation && (
+                <div>
+                  <div className="text-gray-400 text-xs">Elevation</div>
+                  <div className="text-white">{site.elevation} m</div>
+                </div>
+              )}
+              {site.ph && (
+                <div>
+                  <div className="text-gray-400 text-xs">pH Level</div>
+                  <div className="text-white">{site.ph}</div>
+                </div>
+              )}
+              {site.perchlorate_wt_pct && (
+                <div>
+                  <div className="text-gray-400 text-xs">Perchlorate</div>
+                  <div className="text-white">{site.perchlorate_wt_pct}%</div>
+                </div>
+              )}
+              {site.terrain_type && (
+                <div>
+                  <div className="text-gray-400 text-xs">Terrain</div>
+                  <div className="text-white">{site.terrain_type}</div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-      )}
-      
-    </div>
+        
+        {/* Action Plan */}
+        {regionMatch && (
+          <div className="mb-6">
+            <h3 className="text-red-400 mb-3 text-lg font-semibold">Next Steps</h3>
+            <div className="bg-gray-800 rounded-lg p-4">
+              <div className="text-sm text-gray-300 space-y-2">
+                <div className="flex items-start">
+                  <span className="text-red-400 mr-2">1.</span>
+                  <span>Assess soil preparation requirements based on compatibility score</span>
+                </div>
+                <div className="flex items-start">
+                  <span className="text-red-400 mr-2">2.</span>
+                  <span>Plan irrigation and environmental control systems</span>
+                </div>
+                <div className="flex items-start">
+                  <span className="text-red-400 mr-2">3.</span>
+                  <span>Consider crop rotation and companion planting strategies</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
