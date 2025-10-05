@@ -1,0 +1,8 @@
+Crop,Germination_on_MarsSimulant,Biomass,Flowered/Seed,Notes,Preferred_pH_range,Terrain_Soil_texture,Temperature_range_C,Humidity_RH_range,Moisture_regime
+Tomato (Solanum lycopersicum),Yes,High (vs control),Did not seed in 50 days,"Good germination and biomass, did not reach full reproductive",6.2–6.8,"Well-drained, fertile loam to sandy loam; avoid heavy clay","Day: 20–27, Night: 16–18",60–85% RH; pollination ~70%,"Consistent moisture, avoid waterlogging/drought stress"
+Carrot,Yes,Moderate,No,"Root crop, biomass measured",6.0–6.8,"Loose, deep, well-drained sandy loam or loam",15–18 (cool conditions favored),Moist environment but not saturated,"Even soil moisture, well drained"
+Cress (Lepidium sativum),Yes,High,Yes (seed set),One of strong performers,6.0–7.0,"Well-drained loam, fertile soil",15–22,High humidity (prefers moist conditions),Requires consistent moisture
+Field mustard,Yes,High,Yes (seed set),High performance,5.5–7.5,Fertile loamy soil,12–25,Moderate to high,"Moist soil, avoid drought"
+Rye (Secale cereale),Yes,High,Flowered,Good growth in Mars simulant,5.0–7.0,"Tolerates sandy/poor soils, loam preferred",10–24,Moderate,"Moderate water need, drought-tolerant"
+Common vetch,Yes,Moderate,No,Did not flower in 50 days,6.0–7.5,Well-drained loamy soil,10–20,Moderate,Needs moderate moisture
+Moringa oleifera (hydroponic),N/A (hydroponics),~0.18–0.224 g dry/plant/day,Not tested,Performed under reduced light (590 W/m²),6.0–7.0,Hydroponic medium,18–28,Moderate,Hydroponic water-controlled

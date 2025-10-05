@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Map, View } from 'ol';
 import TileLayer from 'ol/layer/Tile';
 import XYZ from 'ol/source/XYZ';
@@ -6,17 +7,62 @@ import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
-import { Style, Circle, Fill, Stroke } from 'ol/style';
-import marsData from './data.json';
+import { Style, Circle, Fill, Stroke, Text } from 'ol/style';
 import SiteDetailsPanel from './SiteDetailsPanel';
 import 'ol/ol.css';
 
 const MarsMap = () => {
   const mapRef = useRef(null);
+  const [searchParams] = useSearchParams();
   const [selectedSite, setSelectedSite] = useState(null);
+  const [regions, setRegions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [cropMatches, setCropMatches] = useState(null);
+  const [cropName, setCropName] = useState(null);
+
+  // Get crop parameter from URL
+  useEffect(() => {
+    const crop = searchParams.get('crop');
+    if (crop) {
+      setCropName(crop);
+      fetchCropMatches(crop);
+    }
+  }, [searchParams]);
+
+  // Fetch crop matches when crop is selected
+  const fetchCropMatches = async (crop) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/crops/match_crop/?crop=${encodeURIComponent(crop)}&top_n=5`);
+      if (response.ok) {
+        const data = await response.json();
+        setCropMatches(data);
+      }
+    } catch (error) {
+      console.error('Error fetching crop matches:', error);
+    }
+  };
+
+  // Fetch Mars regions data
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/regions/list_regions/');
+        if (response.ok) {
+          const data = await response.json();
+          setRegions(data);
+        }
+      } catch (error) {
+        console.error('Error fetching regions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRegions();
+  }, []);
 
   useEffect(() => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || loading) return;
 
     // Create Mars basemap layer
     const marsLayer = new TileLayer({
@@ -31,16 +77,39 @@ const MarsMap = () => {
     // Create vector source for markers
     const vectorSource = new VectorSource();
 
-    // Add markers from data.json
-    marsData.forEach(site => {
-      const marker = new Feature({
-        geometry: new Point([site.lon, site.lat]),
-        name: site.name,
-        location: site.location,
-        id: site.id
-      });
+    // Helper function to parse coordinates
+    const parseCoordinates = (coordStr) => {
+      if (!coordStr) return null;
+      
+      // Handle format like "4.5895°S" or "137.4417°E" or "-4.5895"
+      const match = coordStr.match(/(-?\d+\.?\d*)°?\s*([NSEW]?)/);
+      if (match) {
+        let value = parseFloat(match[1]);
+        const direction = match[2];
+        if (direction === 'S' || direction === 'W') value = -value;
+        return value;
+      }
+      return parseFloat(coordStr);
+    };
 
-      vectorSource.addFeature(marker);
+    // Add markers from regions data
+    regions.forEach(region => {
+      const lat = parseCoordinates(region.latitude);
+      const lon = parseCoordinates(region.longitude);
+      
+      console.log(`Region: ${region.Region}, Lat: ${region.latitude} -> ${lat}, Lon: ${region.longitude} -> ${lon}`);
+      
+      if (lat !== null && lon !== null) {
+        const marker = new Feature({
+          geometry: new Point([lon, lat]),
+          regionData: region
+        });
+
+        vectorSource.addFeature(marker);
+        console.log(`Added marker for ${region.Region} at [${lon}, ${lat}]`);
+      } else {
+        console.log(`Skipped marker for ${region.Region} - invalid coordinates`);
+      }
     });
 
     // Create vector layer for markers
@@ -48,9 +117,14 @@ const MarsMap = () => {
       source: vectorSource,
       style: new Style({
         image: new Circle({
-          radius: 8,
+          radius: 10,
           fill: new Fill({ color: '#ff4444' }),
           stroke: new Stroke({ color: '#ffffff', width: 3 })
+        }),
+        text: new Text({
+          text: '📍',
+          scale: 1.2,
+          offsetY: -15
         })
       })
     });
@@ -71,15 +145,32 @@ const MarsMap = () => {
       const feature = map.forEachFeatureAtPixel(event.pixel, (feature) => feature);
       if (feature) {
         const properties = feature.getProperties();
-        const siteData = marsData.find(site => site.id === properties.id);
-        setSelectedSite(siteData);
+        setSelectedSite(properties.regionData);
       }
     });
 
     return () => {
       map.setTarget(null);
     };
-  }, []);
+  }, [regions, loading]);
+
+  if (loading) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center bg-gray-900 text-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <p>Loading Mars regions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const getScoreColor = (score) => {
+    if (score >= 5) return 'text-green-400'
+    if (score >= 2) return 'text-yellow-400'
+    if (score >= 0) return 'text-orange-400'
+    return 'text-red-400'
+  }
 
   return (
     <div className="w-screen h-screen m-0 p-0 relative">
@@ -89,7 +180,10 @@ const MarsMap = () => {
       {/* Right Panel */}
       <SiteDetailsPanel 
         site={selectedSite} 
-        onClose={() => setSelectedSite(null)} 
+        onClose={() => setSelectedSite(null)}
+        cropMatches={cropMatches}
+        regions={regions}
+        onRegionSelect={setSelectedSite}
       />
     </div>
   );

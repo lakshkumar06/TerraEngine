@@ -1,19 +1,46 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import RocketAnimation from './RocketAnimation'
 
 const Search = () => {
   const [searchQuery, setSearchQuery] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
 
   const handleSearch = () => {
-    if (searchQuery.trim()) {
-      console.log('Searching for:', searchQuery)
-      // Redirect to map page regardless of search query
-      navigate('/map')
-    } else {
-      // Even if empty, redirect to map
-      navigate('/map')
+    if (!searchQuery.trim()) return
+    
+    setIsLoading(true)
+    console.log('Searching for:', searchQuery)
+    
+    // Extract crop name from search query (simple extraction)
+    const cropName = extractCropName(searchQuery)
+    
+    // Navigate to map with crop parameter
+    setTimeout(() => {
+      navigate(`/map?crop=${encodeURIComponent(cropName)}`)
+    }, 3000)
+  }
+
+  const extractCropName = (query) => {
+    // Simple crop name extraction - look for common crop keywords
+    const cropKeywords = ['tomato', 'carrot', 'cress', 'mustard', 'rye', 'vetch', 'moringa', 'potato', 'wheat', 'corn', 'lettuce', 'spinach']
+    
+    const lowerQuery = query.toLowerCase()
+    for (const keyword of cropKeywords) {
+      if (lowerQuery.includes(keyword)) {
+        return keyword.charAt(0).toUpperCase() + keyword.slice(1)
+      }
     }
+    
+    // If no specific crop found, try to extract from "like X" patterns
+    const likeMatch = query.match(/like\s+([^?]+)/i)
+    if (likeMatch) {
+      return likeMatch[1].trim()
+    }
+    
+    // Default fallback
+    return searchQuery
   }
 
   const handleKeyPress = (e) => {
@@ -24,6 +51,8 @@ const Search = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-900 text-white">
+      <RocketAnimation isVisible={isLoading} />
+      
       {/* Logo/Title */}
       <h1 className="text-6xl font-bold text-red-500 mb-12 text-center">
         TerraEngine
@@ -43,27 +72,30 @@ const Search = () => {
           />
         </div>
 
-        {/* Search Buttons */}
-        <div className="flex gap-4">
-          <button
-            onClick={handleSearch}
-            className="px-6 py-3 text-base bg-gray-600 text-white border-none rounded-md cursor-pointer transition-colors duration-300 hover:bg-gray-500"
-          >
-            Search
-          </button>
-          
-          <button
-            onClick={() => setSearchQuery('')}
-            className="px-12 py-3 text-base bg-red-500 text-white border-none rounded-md cursor-pointer transition-colors duration-300 hover:bg-red-600"
-          >
-            Clear
-          </button>
-        </div>
+        {/* Search Button */}
+        <button
+          onClick={handleSearch}
+          disabled={isLoading || !searchQuery.trim()}
+          className="px-8 py-4 text-lg bg-red-500 text-white border-none rounded-md cursor-pointer transition-colors duration-300 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isLoading ? 'Searching...' : 'Find Growing Regions'}
+        </button>
       </div>
 
-      {/* Footer */}
-      <div className="absolute bottom-5 text-sm text-gray-400">
-        Search Mars exploration sites and simulator data
+      {/* Example queries */}
+      <div className="mt-8 text-center text-gray-400">
+        <p className="mb-2">Try searching for:</p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {['Tomato', 'Carrot', 'Rye', 'Field Mustard'].map((crop) => (
+            <button
+              key={crop}
+              onClick={() => setSearchQuery(`Where can I plant ${crop}?`)}
+              className="px-3 py-1 text-sm bg-gray-800 text-gray-300 rounded-full hover:bg-gray-700 transition-colors"
+            >
+              {crop}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )

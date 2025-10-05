@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+}
 
 #root {
   height: 100vh;
@@ -38,6 +42,29 @@
 
 .animate-slide-out-right {
   animation: slideOutRight 0.3s ease-out forwards;
+}
+
+/* Rocket animation */
+@keyframes rocket {
+  0% {
+    transform: translateX(0) translateY(-50%) scale(1);
+  }
+  25% {
+    transform: translateX(75px) translateY(-60%) scale(1.1);
+  }
+  50% {
+    transform: translateX(150px) translateY(-50%) scale(1);
+  }
+  75% {
+    transform: translateX(225px) translateY(-40%) scale(1.1);
+  }
+  100% {
+    transform: translateX(300px) translateY(-50%) scale(1);
+  }
+}
+
+.animate-rocket {
+  animation: rocket 3s ease-in-out infinite;
 }
 
 #map {

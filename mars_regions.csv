@@ -1,0 +1,5 @@
+Region,Latitude_deg,Longitude_deg,Elevation_m,Perchlorate_wt_pct,Water_release_wt_pct,pH,Major_minerals,Terrain_type,Notes
+Gale Crater (Rocknest),4.5895°S,137.4417°E,−4501,0.4 (Rocknest),2.0,High (alkaline),"Feldspar 26%, Olivine 13%, Pyroxene 20%, Amorphous 35%",layered crater floor, “Perchlorates inferred, oxychlorine presence”
+Meridiani Planum (Opportunity),2.0524°S,353.7924°E,−1444, (not directly measured),,High (alkaline),global dust / sediment plains, flat plains / smooth plains,“Dust enriched in Cl/S, nanophase Fe oxides”
+Phoenix Landing Site, (≈68°N? site’s latitude not in these sources),, (not found),0.6,,"High (alkaline)",polar soil plain,“Perchlorates measured in polar soil”
+InSight Site (Elysium Planitia region),4.502384°N,135.623447°E,−2613.426, (unknown),, (unknown),smooth sandy/granule & pebble rich surface,“Smooth granule/pebble‐rich surface with few rocks”
