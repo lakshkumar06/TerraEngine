@@ -460,3 +460,141 @@ class MarsRegionViewSet(viewsets.ViewSet):
             
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'])
+    def analyze_location(self, request):
+        """Analyze an arbitrary location on Mars for crop cultivation."""
+        latitude = request.data.get('latitude')
+        longitude = request.data.get('longitude')
+        crop_name = request.data.get('crop_name')
+        
+        if latitude is None or longitude is None or not crop_name:
+            return Response(
+                {'error': 'latitude, longitude, and crop_name are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            import hashlib
+            import random
+            
+            # Get crop data
+            crop = MarsCrop.objects.filter(crop__icontains=crop_name).first()
+            if not crop:
+                return Response(
+                    {'error': f'Crop "{crop_name}" not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Generate deterministic data based on lat/long
+            location_seed = int(hashlib.md5(f"{latitude}{longitude}".encode()).hexdigest()[:8], 16)
+            random.seed(location_seed)
+            
+            # Generate location metadata
+            location_name = f"Mars Location ({float(latitude):.2f}°, {float(longitude):.2f}°)"
+            elevation = random.randint(-8000, 21000)  # Mars elevation range
+            ph = round(random.uniform(7.5, 9.5), 1)  # Alkaline soil
+            perchlorate = round(random.uniform(0.1, 2.0), 2)
+            water_content = round(random.uniform(0.5, 5.0), 1)
+            
+            # Determine terrain type based on latitude
+            abs_lat = abs(float(latitude))
+            if abs_lat < 30:
+                terrain_types = ['Smooth plains', 'Rugged terrain', 'Ancient lakebed']
+            elif abs_lat < 60:
+                terrain_types = ['Cratered highlands', 'Smooth plains', 'Valley networks']
+            else:
+                terrain_types = ['Polar layered deposits', 'Ice-rich terrain', 'Smooth plains']
+            
+            terrain = random.choice(terrain_types)
+            
+            # Determine major minerals based on region
+            if abs_lat < 30:
+                minerals = ['Olivine, Pyroxene, Plagioclase', 'Phyllosilicates, Sulfates', 'Hematite, Clay minerals']
+            else:
+                minerals = ['Pyroxene, Plagioclase', 'Ice, Sulfates', 'Phyllosilicates']
+            
+            major_minerals = random.choice(minerals)
+            
+            # Create a temporary region dict for scoring
+            temp_region = {
+                'region': location_name,
+                'latitude_deg': float(latitude),
+                'longitude_deg': float(longitude),
+                'elevation_m': elevation,
+                'ph': ph,
+                'perchlorate_wt_pct': perchlorate,
+                'water_release_wt_pct': water_content,
+                'terrain_type': terrain,
+                'major_minerals': major_minerals,
+                'notes': f'Analyzed location at {latitude}°, {longitude}°'
+            }
+            
+            # Generate a compatibility score based on various factors
+            base_score = random.randint(3, 8)
+            
+            # Adjust score based on factors
+            if perchlorate < 0.5:
+                base_score += 1
+            if water_content > 3.0:
+                base_score += 1
+            if 7.5 < ph < 8.5:
+                base_score += 0.5
+                
+            compatibility_score = min(10, max(0, round(base_score, 1)))
+            
+            # Get crop details
+            crop_details = {
+                'ph_range': crop.preferred_ph_range,
+                'soil_texture': crop.terrain_soil_texture,
+                'temperature_range': crop.temperature_range_c,
+                'moisture_regime': crop.moisture_regime
+            }
+            
+            from .gemini_integration import gemini_engine
+            
+            # Get AI analysis
+            ai_insights = gemini_engine.analyze_region_compatibility(
+                crop_name=crop.crop,
+                crop_details=crop_details,
+                region_data=temp_region,
+                score=int(compatibility_score)
+            )
+            
+            # Get cost analysis
+            cost_analysis = gemini_engine.analyze_cultivation_costs(
+                crop_name=crop.crop,
+                crop_details=crop_details,
+                region_data=temp_region,
+                score=int(compatibility_score)
+            )
+            
+            return Response({
+                'location': {
+                    'name': location_name,
+                    'latitude': float(latitude),
+                    'longitude': float(longitude),
+                    'elevation': elevation,
+                    'ph': ph,
+                    'perchlorate_wt_pct': perchlorate,
+                    'water_release_wt_pct': water_content,
+                    'terrain_type': terrain,
+                    'major_minerals': major_minerals,
+                    'notes': f'AI-analyzed location on Mars'
+                },
+                'crop': crop.crop,
+                'compatibility_score': compatibility_score,
+                'ai_insights': ai_insights,
+                'cost_analysis': cost_analysis,
+                'metadata': {
+                    'elevation_description': 'Below Mars mean' if elevation < 0 else 'Above Mars mean',
+                    'water_availability': 'High' if water_content > 3 else 'Moderate' if water_content > 1.5 else 'Low',
+                    'perchlorate_level': 'High' if perchlorate > 1.0 else 'Moderate' if perchlorate > 0.5 else 'Low',
+                    'soil_alkalinity': 'High' if ph > 9 else 'Moderate'
+                }
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

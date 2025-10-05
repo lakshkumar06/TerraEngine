@@ -21,6 +21,8 @@ const MarsMap = () => {
   const [loading, setLoading] = useState(true);
   const [cropMatches, setCropMatches] = useState(null);
   const [cropName, setCropName] = useState(null);
+  const [clickedLocation, setClickedLocation] = useState(null);
+  const [analyzingLocation, setAnalyzingLocation] = useState(false);
 
   // Get crop parameter from URL
   useEffect(() => {
@@ -170,13 +172,28 @@ const MarsMap = () => {
     // Store map instance for later access
     mapInstanceRef.current = map;
 
-    // Add click handler for markers
+    // Add click handler for markers AND map locations
     map.on('click', (event) => {
       const feature = map.forEachFeatureAtPixel(event.pixel, (feature) => feature);
       if (feature) {
+        // Clicked on a marker
         const properties = feature.getProperties();
         setSelectedSite(properties.regionData);
+        setClickedLocation(null); // Clear any clicked location
+      } else if (cropName) {
+        // Clicked on empty map area (only if crop is selected)
+        const coords = map.getCoordinateFromPixel(event.pixel);
+        const [longitude, latitude] = coords;
+        console.log(`Clicked location: ${latitude}°, ${longitude}°`);
+        setClickedLocation({ latitude, longitude });
       }
+    });
+    
+    // Add pointer cursor on hover over map
+    map.on('pointermove', (event) => {
+      const pixel = map.getEventPixel(event.originalEvent);
+      const hit = map.hasFeatureAtPixel(pixel);
+      map.getTarget().style.cursor = hit || cropName ? 'pointer' : '';
     });
 
     return () => {
@@ -225,6 +242,50 @@ const MarsMap = () => {
     }
   }, [selectedSite]);
 
+  // Analyze clicked location
+  useEffect(() => {
+    if (!clickedLocation || !cropName) return;
+    
+    const analyzeLocation = async () => {
+      setAnalyzingLocation(true);
+      try {
+        const response = await fetch('http://localhost:8000/api/regions/analyze_location/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            latitude: clickedLocation.latitude,
+            longitude: clickedLocation.longitude,
+            crop_name: cropName
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Convert to format expected by SiteDetailsPanel
+          const locationData = {
+            ...data.location,
+            score: data.compatibility_score,
+            isClickedLocation: true
+          };
+          setSelectedSite(locationData);
+          
+          // Store the analysis data for the panel
+          locationData.aiInsights = data.ai_insights;
+          locationData.costAnalysis = data.cost_analysis;
+          locationData.metadata = data.metadata;
+        }
+      } catch (error) {
+        console.error('Error analyzing location:', error);
+      } finally {
+        setAnalyzingLocation(false);
+      }
+    };
+    
+    analyzeLocation();
+  }, [clickedLocation, cropName]);
+
   // Function to zoom back out and return to list view
   const handleClosePanel = () => {
     console.log('Closing panel, returning to list view');
@@ -245,8 +306,9 @@ const MarsMap = () => {
       }, 1000);
     }
     
-    // Clear selected site to return to list view
+    // Clear selected site and clicked location
     setSelectedSite(null);
+    setClickedLocation(null);
   };
 
   if (loading) {
@@ -271,6 +333,36 @@ const MarsMap = () => {
     <div className="w-screen h-screen m-0 p-0 relative">
       {/* Map */}
       <div ref={mapRef} className="w-full h-full" />
+      
+      {/* Top-Left Location Info Box */}
+      {analyzingLocation && (
+        <div className="absolute top-5 left-5 z-40 bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-4 border-2 border-cyan-500/40 shadow-2xl backdrop-blur-sm animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-400"></div>
+            <div className="text-white">
+              <div className="font-semibold text-sm">🔍 Analyzing Location...</div>
+              <div className="text-xs text-cyan-300 mt-1">
+                {clickedLocation && `${clickedLocation.latitude.toFixed(2)}°, ${clickedLocation.longitude.toFixed(2)}°`}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Location Analysis Hint */}
+      {cropName && !selectedSite && !analyzingLocation && (
+        <div className="absolute top-5 left-5 z-40 bg-gradient-to-br from-purple-900/90 to-violet-900/80 rounded-lg p-3 border-2 border-purple-500/40 shadow-xl backdrop-blur-sm">
+          <div className="text-white">
+            <div className="font-semibold text-sm flex items-center gap-2">
+              <span>💡</span>
+              <span>Click anywhere on Mars</span>
+            </div>
+            <div className="text-xs text-purple-200 mt-1">
+              Get AI analysis for any location
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Right Panel */}
       <SiteDetailsPanel 
