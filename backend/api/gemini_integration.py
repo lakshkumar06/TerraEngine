@@ -7,13 +7,13 @@ import os
 import json
 from typing import Dict, List, Any
 
-try:
-    from decouple import config
-    GEMINI_API_KEY = config('GEMINI_API_KEY', default=None)
-    SERP_API_KEY = config('SERP_API_KEY', default=None)
-except:
-    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', None)
-    SERP_API_KEY = os.getenv('SERP_API_KEY', None)
+from decouple import config
+GEMINI_API_KEY = config('GEMINI_API_KEY', default=None)
+SERP_API_KEY = config('SERP_API_KEY', default=None)
+if not GEMINI_API_KEY:
+    raise RuntimeError('GEMINI_API_KEY is required and was not found in environment')
+if not SERP_API_KEY:
+    raise RuntimeError('SERP_API_KEY is required and was not found in environment')
 
 # SERP API Integration - For web search and real-time data
 import requests
@@ -34,18 +34,13 @@ class GeminiRecommendationEngine:
         """
         self.api_key = api_key or GEMINI_API_KEY
         self.serp_api_key = serp_api_key or SERP_API_KEY
-        self.enabled = bool(self.api_key)
-        self.serp_enabled = bool(self.serp_api_key)
+        self.enabled = True
+        self.serp_enabled = True
         
-        if self.enabled:
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel('gemini-2.0-flash')
-                print("✅ Gemini AI initialized successfully with gemini-2.0-flash!")
-            except Exception as e:
-                print(f"Warning: Could not initialize Gemini AI: {e}")
-                self.enabled = False
+        import google.generativeai as genai
+        genai.configure(api_key=self.api_key)
+        self.model = genai.GenerativeModel('gemini-2.0-flash')
+        print("✅ Gemini AI initialized successfully with gemini-2.0-flash!")
     
     def search_serp_api(self, query: str) -> Dict[str, Any]:
         """
@@ -57,30 +52,16 @@ class GeminiRecommendationEngine:
         Returns:
             Dict with search results (currently placeholder for hackathon demo)
         """
-        if not self.serp_enabled:
-            return {
-                'enabled': False,
-                'message': 'SERP API not configured'
-            }
-        
-        # SERP API endpoint (placeholder for demonstration)
-        # In production, this would make actual API calls to SERP
-        serp_url = "https://serpapi.com/search"
-        
-        # Note: Actual implementation would use:
-        # params = {
-        #     'api_key': self.serp_api_key,
-        #     'q': query,
-        #     'engine': 'google'
-        # }
-        # response = requests.get(serp_url, params=params)
-        
-        return {
-            'enabled': True,
-            'query': query,
-            'source': 'SERP API',
-            'message': 'SERP API integration available for enhanced search'
+        serp_url = "https://serpapi.com/search.json"
+        params = {
+            'api_key': self.serp_api_key,
+            'q': query,
+            'engine': 'google'
         }
+        response = requests.get(serp_url, params=params, timeout=20)
+        response.raise_for_status()
+        data = response.json()
+        return {'enabled': True, 'results': data}
     
     def generate_crop_insights(self, crop_data: Dict, regions: List[Dict]) -> Dict[str, Any]:
         """
@@ -93,12 +74,7 @@ class GeminiRecommendationEngine:
         Returns:
             Dictionary containing AI-generated insights and recommendations
         """
-        if not self.enabled:
-            return {
-                'enabled': False,
-                'message': 'Gemini AI not configured. Using algorithmic recommendations.',
-                'recommendation': self._generate_fallback_insights(crop_data, regions)
-            }
+        # require AI to be enabled
         
         try:
             # Prepare prompt for Gemini
@@ -116,12 +92,7 @@ class GeminiRecommendationEngine:
             }
             
         except Exception as e:
-            print(f"Error generating AI insights: {e}")
-            return {
-                'enabled': False,
-                'error': str(e),
-                'recommendation': self._generate_fallback_insights(crop_data, regions)
-            }
+            raise
     
     def _create_analysis_prompt(self, crop_data: Dict, regions: List[Dict]) -> str:
         """Create a detailed prompt for Gemini AI analysis"""
@@ -160,7 +131,7 @@ Keep the response concise and actionable for Mars colonization planners.
         return prompt
     
     def _generate_fallback_insights(self, crop_data: Dict, regions: List[Dict]) -> str:
-        """Generate basic insights without AI (fallback mode)"""
+        """Deprecated: Fallback removed. This method should not be called."""
         
         crop_name = crop_data.get('crop', 'this crop')
         
@@ -201,7 +172,7 @@ NEXT STEPS:
 For best results, consider implementing controlled environment agriculture (CEA) with Martian regolith enrichment.
 """
         
-        return insights.strip()
+        raise RuntimeError('AI fallback is disabled')
     
     def _parse_ai_response(self, response_text: str) -> Dict:
         """Parse AI response into structured data"""
@@ -225,12 +196,7 @@ For best results, consider implementing controlled environment agriculture (CEA)
         Returns:
             Dictionary with detailed compatibility analysis
         """
-        if not self.enabled:
-            return {
-                'enabled': False,
-                'message': 'AI analysis not available',
-                'analysis': self._generate_fallback_region_analysis(crop_name, region_data, score)
-            }
+        # require AI to be enabled
         
         try:
             # Create detailed prompt for region-specific analysis with emphasis on variety
@@ -305,15 +271,10 @@ IMPORTANT: Make each analysis distinctly different. Vary your language, focus on
             }
             
         except Exception as e:
-            print(f"Error generating region AI insights: {e}")
-            return {
-                'enabled': False,
-                'error': str(e),
-                'analysis': self._generate_fallback_region_analysis(crop_name, region_data, score)
-            }
+            raise
     
     def _generate_fallback_region_analysis(self, crop_name: str, region_data: Dict, score: int) -> str:
-        """Generate varied region analysis without AI (with some randomization for uniqueness)"""
+        """Deprecated: Fallback removed. This method should not be called."""
         import hashlib
         
         region_name = region_data.get('name', 'Unknown')
@@ -361,28 +322,7 @@ IMPORTANT: Make each analysis distinctly different. Vary your language, focus on
         selected_challenges = [challenges[i] for i in range((seed % 2) + 2)]
         selected_advantages = [advantages[i] for i in range((seed % 2) + 2)]
         
-        return f"""**{region_name} Analysis for {crop_name}**
-
-**Compatibility Score: {score}/10** - {outlook.capitalize()} growing potential
-
-**Why This Score?**
-This location presents {outlook} conditions for {crop_name} cultivation. The compatibility assessment considers soil pH ({region_data.get('ph', 'Unknown')}), terrain characteristics, and available water resources ({region_data.get('water_release_wt_pct', 'Unknown')}%).
-
-**Key Advantages:**
-{chr(10).join(f'• {adv}' for adv in selected_advantages)}
-
-**Main Challenges:**
-{chr(10).join(f'• {challenge}' for challenge in selected_challenges)}
-
-**Success Metrics:**
-- Estimated preparation time: {prep_time}
-- Projected success rate: {success_rate}
-- Resource intensity: {'Low' if score >= 5 else 'Moderate' if score >= 3 else 'High'}
-
-**Bottom Line:** {recommendation}
-
-*Note: For detailed AI-powered insights specific to {crop_name} at {region_name}, Gemini API provides comprehensive analysis including exact soil amendments, timeline projections, and technology requirements.*
-"""
+        raise RuntimeError('AI fallback is disabled')
     
     def _get_recommendation_level(self, score: int) -> str:
         """Get recommendation level based on score"""
@@ -406,12 +346,7 @@ This location presents {outlook} conditions for {crop_name} cultivation. The com
         Returns:
             Dictionary with answer and metadata
         """
-        if not self.enabled:
-            return {
-                'enabled': False,
-                'message': 'AI Q&A not available',
-                'answer': 'Please configure Gemini API to enable interactive Q&A.'
-            }
+        # require AI to be enabled
         
         try:
             crop_name = context.get('crop_name', 'Unknown')
@@ -482,8 +417,7 @@ Guidelines:
         Returns:
             Dictionary with cost breakdown (one-time, sustained, detailed)
         """
-        if not self.enabled:
-            return self._generate_fallback_cost_analysis(crop_name, region_data, score)
+        # require AI to be enabled
         
         try:
             # Create detailed prompt for cost analysis
@@ -559,12 +493,10 @@ Return format:
                 return cost_data
                 
             except json.JSONDecodeError:
-                print(f"Failed to parse cost JSON, using fallback")
-                return self._generate_fallback_cost_analysis(crop_name, region_data, score)
+                raise
             
         except Exception as e:
-            print(f"Error generating cost analysis: {e}")
-            return self._generate_fallback_cost_analysis(crop_name, region_data, score)
+            raise
     
     def recommend_regions_for_crop(self, crop_name: str, crop_details: Dict, all_regions: list) -> list:
         """
@@ -578,9 +510,7 @@ Return format:
         Returns:
             List of recommended region names with scores
         """
-        if not self.enabled:
-            # Fallback: return first 5 regions
-            return [r.get('name', r.get('region', 'Unknown')) for r in all_regions[:5]]
+        # require AI to be enabled
         
         try:
             # Prepare regions summary for Gemini
@@ -627,12 +557,10 @@ Return ONLY valid JSON (no markdown):
             return data.get('recommendations', [])[:7]
             
         except Exception as e:
-            print(f"Error in Gemini region recommendation: {e}")
-            # Fallback to first 5
-            return [{'region': r.get('name', r.get('region', 'Unknown')), 'score': 7.0, 'reason': 'Algorithmically selected'} for r in all_regions[:5]]
+            raise
     
     def _generate_fallback_cost_analysis(self, crop_name: str, region_data: Dict, score: int) -> Dict:
-        """Generate cost estimates without AI (fallback mode with variance)"""
+        """Deprecated: Fallback removed. This method should not be called."""
         import hashlib
         
         region_name = region_data.get('name', 'Unknown')
@@ -709,13 +637,7 @@ Return ONLY valid JSON (no markdown):
             }
         }
         
-        return {
-            'enabled': False,
-            'one_time_cost': one_time_cost,
-            'annual_sustained_cost': annual_cost,
-            'breakdown': breakdown,
-            'note': 'AI-powered cost analysis unavailable. Using algorithmic estimates.'
-        }
+        raise RuntimeError('AI fallback is disabled')
 
 
 # Initialize global instance
