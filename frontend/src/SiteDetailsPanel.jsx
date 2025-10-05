@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 
-const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect }) => {
+const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedRegions = [], onRegionSelect }) => {
   const [isClosing, setIsClosing] = useState(false)
   const [aiInsights, setAiInsights] = useState(null)
   const [loadingAI, setLoadingAI] = useState(false)
@@ -105,6 +105,13 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         return
       }
 
+      // Check if this is a clicked location with preloaded data
+      if (site.isClickedLocation && site.preloadedAIInsights) {
+        setAiInsights(site.preloadedAIInsights)
+        setLoadingAI(false)
+        return
+      }
+
       // Find the match data for this region
       const regionMatch = cropMatches?.top_matches?.find(match => 
         (match.region_name || match.region) === site.name
@@ -154,6 +161,13 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
       // Only fetch if we have a site selected AND crop matches
       if (!site || !cropMatches?.crop) {
         setCostData(null)
+        return
+      }
+
+      // Check if this is a clicked location with preloaded data
+      if (site.isClickedLocation && site.preloadedCostAnalysis) {
+        setCostData(site.preloadedCostAnalysis)
+        setLoadingCost(false)
         return
       }
 
@@ -248,6 +262,66 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
               );
             })}
           </div>
+          
+          {/* User Researched Regions Section */}
+          {userResearchedRegions && userResearchedRegions.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-700">
+              <h3 className="text-lg font-semibold mb-3 text-purple-300 flex items-center">
+                <span className="mr-2">🔬</span>
+                User Researched Regions
+                <span className="ml-2 px-2 py-0.5 text-xs bg-purple-900/40 text-purple-300 rounded-full border border-purple-500/30">
+                  {userResearchedRegions.length}
+                </span>
+              </h3>
+              
+              <div className="space-y-3 pb-4">
+                {userResearchedRegions.map((userRegion, index) => (
+                  <div 
+                    key={`user-${userRegion.name}-${index}`}
+                    className="bg-gradient-to-br from-purple-900/30 to-violet-900/20 rounded-lg p-4 cursor-pointer hover:from-purple-900/40 hover:to-violet-900/30 transition-all border-2 border-purple-600/40 hover:border-purple-500/60"
+                    onClick={() => {
+                      console.log('Selecting user-researched region:', userRegion);
+                      onRegionSelect(userRegion);
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-white text-sm">
+                            {userRegion.name}
+                          </h3>
+                          <span className="px-2 py-0.5 text-xs bg-purple-800/50 text-purple-200 rounded-full border border-purple-500/30">
+                            Custom Analysis
+                          </span>
+                        </div>
+                        <div className="text-xs text-purple-300/70">
+                          Lat: {typeof userRegion.latitude === 'number' ? userRegion.latitude.toFixed(2) : userRegion.latitude}°, 
+                          Lon: {typeof userRegion.longitude === 'number' ? userRegion.longitude.toFixed(2) : userRegion.longitude}°
+                        </div>
+                      </div>
+                      <div className={`text-lg font-bold ${getScoreColor(userRegion.score)}`}>
+                        {userRegion.score}/10
+                      </div>
+                    </div>
+                    
+                    <div className="text-xs text-purple-200/80 mt-2">
+                      <div className="flex flex-wrap gap-2">
+                        <span className="bg-purple-800/30 px-2 py-1 rounded border border-purple-600/30">
+                          pH: {userRegion.ph}
+                        </span>
+                        <span className="bg-purple-800/30 px-2 py-1 rounded border border-purple-600/30">
+                          Elevation: {userRegion.elevation}m
+                        </span>
+                        <span className="bg-purple-800/30 px-2 py-1 rounded border border-purple-600/30">
+                          Water: {userRegion.water_release_wt_pct}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -279,15 +353,20 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
       })
     }
     
-    if (site.ph && site.ph.includes('High')) {
-      recommendations.push({
-        type: 'info',
-        title: 'Alkaline Soil',
-        message: 'Consider acidifying treatments or select pH-tolerant crop varieties'
-      })
+    // Handle pH - can be either a number (e.g., 9.0) or a string (e.g., "High alkaline")
+    if (site.ph) {
+      const isHighPH = (typeof site.ph === 'number' && site.ph > 8.5) || 
+                       (typeof site.ph === 'string' && site.ph.toLowerCase().includes('high'))
+      if (isHighPH) {
+        recommendations.push({
+          type: 'info',
+          title: 'Alkaline Soil',
+          message: 'Consider acidifying treatments or select pH-tolerant crop varieties'
+        })
+      }
     }
     
-    if (site.terrain_type && site.terrain_type.includes('smooth')) {
+    if (site.terrain_type && typeof site.terrain_type === 'string' && site.terrain_type.toLowerCase().includes('smooth')) {
       recommendations.push({
         type: 'success',
         title: 'Suitable Terrain',
@@ -322,14 +401,14 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         
         {/* Compatibility Overview */}
         {regionMatch && cropMatches && (
-          <div className={`mb-6 rounded-lg p-4 border bg-gray-800/50 border-gray-700`}>
+          <div className="mb-6 rounded-lg p-4 border-2 bg-gradient-to-br from-amber-900/30 to-orange-900/20 border-amber-600/40">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-semibold text-white">Growing Compatibility</h3>
-              <div className={`text-3xl font-bold text-orange-700`}>
+              <h3 className="text-lg font-semibold text-amber-300">🌱 Growing Compatibility</h3>
+              <div className="text-3xl font-bold text-amber-400">
                 {regionMatch.score}/10
               </div>
             </div>
-            <div className={`text-sm font-medium text-gray-300`}>
+            <div className="text-sm font-medium text-amber-200/80">
               {getCompatibilityLevel(regionMatch.score).level} match for {cropMatches.crop}
             </div>
           </div>
@@ -338,73 +417,84 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         {/* COST ANALYSIS SECTION */}
         {cropMatches && costData && !loadingCost && !costError && (
           <div className="mb-6 space-y-4">
+            {/* Header with Gemini Badge */}
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-cyan-300 text-lg font-semibold">💰 Cost Analysis</h3>
+              {costData?.enabled && (
+                <span className="px-2.5 py-1 text-xs bg-cyan-900/40 text-cyan-300 rounded-full border border-cyan-500/30 font-medium">
+                  Powered by SERP API
+                </span>
+              )}
+            </div>
+            
             {/* One-Time Cost */}
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <div className="bg-gradient-to-br from-cyan-900/30 to-blue-900/20 rounded-lg p-4 border-2 border-cyan-600/40">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-gray-300 text-sm font-semibold mb-1">One-Time Setup Cost</h3>
-                  <p className="text-gray-400 text-xs">Initial investment for infrastructure</p>
+                  <h3 className="text-cyan-300 text-sm font-semibold mb-1">💵 One-Time Setup Cost</h3>
+                  <p className="text-cyan-200/60 text-xs">Initial investment for infrastructure</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-gray-200">
+                  <div className="text-2xl font-bold text-cyan-400">
                     ${(costData.one_time_cost / 1000000).toFixed(2)}M
                   </div>
-                  <p className="text-xs text-gray-400">USD</p>
+                  <p className="text-xs text-cyan-300/60">USD</p>
                 </div>
               </div>
             </div>
             
             {/* Sustained Cost */}
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <div className="bg-gradient-to-br from-blue-900/30 to-cyan-900/20 rounded-lg p-4 border-2 border-blue-600/40">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-gray-300 text-sm font-semibold mb-1">Annual Sustained Cost</h3>
-                  <p className="text-gray-400 text-xs">Yearly operational expenses</p>
+                  <h3 className="text-blue-300 text-sm font-semibold mb-1">🔄 Annual Sustained Cost</h3>
+                  <p className="text-blue-200/60 text-xs">Yearly operational expenses</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-gray-200">
+                  <div className="text-2xl font-bold text-blue-400">
                     ${(costData.annual_sustained_cost / 1000).toFixed(0)}K
                   </div>
-                  <p className="text-xs text-gray-400">USD per year</p>
+                  <p className="text-xs text-blue-300/60">USD per year</p>
                 </div>
               </div>
             </div>
             
             {/* Detailed Cost Breakdown - Dropdown */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border-2 border-slate-600/40 overflow-hidden">
               <button
                 onClick={() => setShowDetailedCosts(!showDetailedCosts)}
-                className="w-full px-4 py-3 flex justify-between items-center hover:bg-gray-750 transition-colors"
+                className="w-full px-4 py-3 flex justify-between items-center hover:bg-slate-700/50 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-white font-semibold text-sm">Detailed Cost Breakdown</span>
+                  <span className="text-lg">📊</span>
+                  <span className="text-slate-200 font-semibold text-sm">Detailed Cost Breakdown</span>
                 </div>
-                <span className={`text-gray-400 transform transition-transform ${showDetailedCosts ? 'rotate-180' : ''}`}>
+                <span className={`text-slate-400 transform transition-transform ${showDetailedCosts ? 'rotate-180' : ''}`}>
                   ▼
                 </span>
               </button>
               
               {showDetailedCosts && costData.breakdown && (
-                <div className="p-4 border-t border-gray-700 bg-gray-900/50">
+                <div className="p-4 border-t border-slate-600/50 bg-slate-900/80">
                   <div className="space-y-3">
                     {/* One-Time Costs */}
                     <div>
-                      <h4 className="text-gray-300 font-semibold text-sm mb-2 flex items-center">
-                        Initial Setup Costs
+                      <h4 className="text-cyan-300 font-semibold text-sm mb-2 flex items-center">
+                        💎 Initial Setup Costs
                       </h4>
                       <div className="space-y-2 pl-2">
                         {['transportation', 'habitat_construction', 'equipment', 'initial_supplies', 'energy_systems', 'water_recycling', 'soil_preparation', 'climate_control'].map((key) => {
                           const item = costData.breakdown[key];
                           if (!item) return null;
                           return (
-                            <div key={key} className="flex justify-between items-start text-xs bg-gray-800/50 p-2 rounded">
+                            <div key={key} className="flex justify-between items-start text-xs bg-cyan-900/20 p-2 rounded border border-cyan-700/30">
                               <div className="flex-1">
-                                <div className="text-white font-medium capitalize">
+                                <div className="text-cyan-200 font-medium capitalize">
                                   {key.replace(/_/g, ' ')}
                                 </div>
-                                <div className="text-gray-400 text-xs mt-0.5">{item.description}</div>
+                                <div className="text-cyan-300/60 text-xs mt-0.5">{item.description}</div>
                               </div>
-                              <div className="text-gray-200 font-bold ml-2 whitespace-nowrap">
+                              <div className="text-cyan-400 font-bold ml-2 whitespace-nowrap">
                                 ${(item.cost / 1000000).toFixed(2)}M
                               </div>
                             </div>
@@ -414,23 +504,23 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                     </div>
                     
                     {/* Annual Costs */}
-                    <div className="pt-3 border-t border-gray-700">
-                      <h4 className="text-gray-300 font-semibold text-sm mb-2 flex items-center">
-                        Annual Operating Costs
+                    <div className="pt-3 border-t border-slate-600/50">
+                      <h4 className="text-blue-300 font-semibold text-sm mb-2 flex items-center">
+                        📅 Annual Operating Costs
                       </h4>
                       <div className="space-y-2 pl-2">
                         {['annual_energy', 'annual_water', 'annual_nutrients', 'annual_maintenance', 'annual_labor'].map((key) => {
                           const item = costData.breakdown[key];
                           if (!item) return null;
                           return (
-                            <div key={key} className="flex justify-between items-start text-xs bg-gray-800/50 p-2 rounded">
+                            <div key={key} className="flex justify-between items-start text-xs bg-blue-900/20 p-2 rounded border border-blue-700/30">
                               <div className="flex-1">
-                                <div className="text-white font-medium capitalize">
+                                <div className="text-blue-200 font-medium capitalize">
                                   {key.replace(/annual_/g, '').replace(/_/g, ' ')}
                                 </div>
-                                <div className="text-gray-400 text-xs mt-0.5">{item.description}</div>
+                                <div className="text-blue-300/60 text-xs mt-0.5">{item.description}</div>
                               </div>
-                              <div className="text-gray-200 font-bold ml-2 whitespace-nowrap">
+                              <div className="text-blue-400 font-bold ml-2 whitespace-nowrap">
                                 ${(item.cost / 1000).toFixed(0)}K
                               </div>
                             </div>
@@ -441,8 +531,8 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                     
                     {/* AI Note if fallback */}
                     {costData.note && (
-                      <div className="mt-3 p-2 bg-gray-800 border border-gray-700 rounded text-xs text-gray-300">
-                        {costData.note}
+                      <div className="mt-3 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded text-xs text-yellow-300">
+                        ⚠️ {costData.note}
                       </div>
                     )}
                   </div>
@@ -472,34 +562,34 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         {/* AI INSIGHTS SECTION - MIDDLE OF DASHBOARD */}
         {cropMatches && (
           <div className="mb-6">
-            <div className="flex items-center mb-3">
-              <h3 className="text-gray-200 text-lg font-semibold flex items-center">
-                AI Insights
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-purple-300 text-lg font-semibold flex items-center">
+                🤖 AI Insights
               </h3>
               {aiInsights?.enabled && (
-                <span className="ml-2 px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded">
-                  Powered by Gemini
+                <span className="px-2.5 py-1 text-xs bg-purple-900/40 text-purple-300 rounded-full border border-purple-500/30 font-medium">
+                  Powered by SERP API
                 </span>
               )}
             </div>
             
             {loadingAI && (
-              <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+              <div className="bg-gradient-to-br from-purple-900/20 to-violet-900/10 rounded-lg p-6 border-2 border-purple-600/30">
                 <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-300 mr-3"></div>
-                  <span className="text-gray-300">Analyzing region with AI...</span>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400 mr-3"></div>
+                  <span className="text-purple-300">Analyzing region with AI...</span>
                 </div>
               </div>
             )}
             
             {aiError && (
-              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                <p className="text-gray-300 text-sm">{aiError}</p>
+              <div className="bg-red-900/20 rounded-lg p-4 border-2 border-red-600/30">
+                <p className="text-red-300 text-sm">⚠️ {aiError}</p>
               </div>
             )}
             
             {!loadingAI && !aiError && aiInsights && (
-              <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-5 border border-gray-700 shadow-lg">
+              <div className="bg-gradient-to-br from-purple-900/30 to-violet-900/20 rounded-lg p-5 border-2 border-purple-600/40 shadow-lg">
                 <div className="prose prose-invert prose-sm max-w-none">
                   <div className="text-gray-200 whitespace-pre-wrap leading-relaxed" 
                        style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -533,9 +623,14 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                 </div>
                 
                 {aiInsights.recommendation_level && (
-                  <div className={`mt-4 pt-4 border-t border-gray-700 flex items-center justify-between`}>
-                    <span className="text-gray-400 text-sm">AI Recommendation Level:</span>
-                    <span className={`px-3 py-1 rounded font-medium text-sm bg-gray-800 text-gray-200`}>
+                  <div className="mt-4 pt-4 border-t border-purple-700/40 flex items-center justify-between">
+                    <span className="text-purple-300/80 text-sm">AI Recommendation Level:</span>
+                    <span className={`px-3 py-1 rounded-full font-medium text-sm ${
+                      aiInsights.recommendation_level === 'highly_recommended' ? 'bg-green-900/40 text-green-400 border border-green-500/40' :
+                      aiInsights.recommendation_level === 'recommended' ? 'bg-blue-900/40 text-blue-400 border border-blue-500/40' :
+                      aiInsights.recommendation_level === 'challenging' ? 'bg-orange-900/40 text-orange-400 border border-orange-500/40' :
+                      'bg-red-900/40 text-red-400 border border-red-500/40'
+                    }`}>
                       {aiInsights.recommendation_level.replace('_', ' ').toUpperCase()}
                     </span>
                   </div>
@@ -556,9 +651,14 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         {/* INTERACTIVE Q&A SECTION */}
         {cropMatches && aiInsights && !loadingAI && (
           <div className="mb-6">
-            <h3 className="text-gray-200 text-lg font-semibold mb-3 flex items-center">
-              Ask Questions
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-emerald-300 text-lg font-semibold flex items-center">
+                💬 Ask Questions
+              </h3>
+              <span className="px-2.5 py-1 text-xs bg-emerald-900/40 text-emerald-300 rounded-full border border-emerald-500/30 font-medium">
+                Powered by SERP API
+              </span>
+            </div>
             
             {/* Conversation History */}
             {conversation.length > 0 && (
@@ -566,15 +666,15 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                 {conversation.map((qa, index) => (
                   <div key={index} className="space-y-2">
                     {/* User Question */}
-                    <div className="bg-gray-800 border-l-4 border-gray-600 rounded-r-lg p-3">
-                      <div className="text-gray-300 text-xs mb-1 font-semibold">You asked:</div>
-                      <div className="text-gray-200 text-sm">{qa.question}</div>
+                    <div className="bg-gradient-to-r from-sky-900/30 to-sky-800/10 border-l-4 border-sky-500 rounded-r-lg p-3">
+                      <div className="text-sky-300 text-xs mb-1 font-semibold">You asked:</div>
+                      <div className="text-sky-100 text-sm">{qa.question}</div>
                     </div>
                     
                     {/* AI Answer */}
-                    <div className="bg-gray-800 border-l-4 border-gray-600 rounded-r-lg p-3">
-                      <div className="text-gray-300 text-xs mb-1 font-semibold">AI Answer:</div>
-                      <div className="text-gray-200 text-sm leading-relaxed">{qa.answer}</div>
+                    <div className="bg-gradient-to-r from-emerald-900/30 to-emerald-800/10 border-l-4 border-emerald-500 rounded-r-lg p-3">
+                      <div className="text-emerald-300 text-xs mb-1 font-semibold">🤖 AI Answer:</div>
+                      <div className="text-emerald-100 text-sm leading-relaxed">{qa.answer}</div>
                     </div>
                   </div>
                 ))}
@@ -582,7 +682,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
             )}
             
             {/* Question Input */}
-            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-4 border-2 border-emerald-600/30">
               <textarea
                 value={currentQuestion}
                 onChange={(e) => setCurrentQuestion(e.target.value)}
@@ -592,28 +692,29 @@ Examples:
 • "What if we use hydroponics instead?"
 • "How much water would we need daily?"
 • "Can we grow this year-round?"`}
-                className="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 focus:border-gray-500 outline-none resize-none text-sm"
+                className="w-full bg-slate-900 text-white p-3 rounded border border-slate-600 focus:border-emerald-500 outline-none resize-none text-sm"
                 rows="3"
                 disabled={askingQuestion}
               />
               
               <div className="flex justify-between items-center mt-3">
-                <span className="text-gray-400 text-xs">
+                <span className="text-emerald-400/60 text-xs">
                   {conversation.length > 0 && `${conversation.length} question(s) asked`}
                 </span>
                 <button
                   onClick={handleAskQuestion}
                   disabled={!currentQuestion.trim() || askingQuestion}
-                  className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg hover:from-emerald-500 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium flex items-center gap-2 shadow-lg shadow-emerald-900/50"
                 >
                   {askingQuestion ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-300"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       Thinking...
                     </>
                   ) : (
                     <>
                       <span>Ask AI</span>
+                      <span>→</span>
                     </>
                   )}
                 </button>
