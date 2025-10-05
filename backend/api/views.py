@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.http import JsonResponse
 from .models import MarsCrop, MarsRegion
 from .utils import match_crop_to_regions
+from .gemini_integration import get_ai_recommendations
 import json
 import os
 
@@ -146,9 +147,9 @@ class MarsCropViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'])
     def match_crop(self, request):
-        """Match a crop to best regions."""
+        """Match a crop to best regions - returns top 5 by default."""
         crop_name = request.GET.get('crop')
-        top_n = int(request.GET.get('top_n', 3))
+        top_n = int(request.GET.get('top_n', 5))  # Default to 5 regions
         
         if not crop_name:
             return Response({'error': 'Crop name required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -165,15 +166,84 @@ class MarsCropViewSet(viewsets.ViewSet):
             # Run matching algorithm
             matches = match_crop_to_regions(crop, regions, top_n)
             
+            # Get detailed region information for each match
+            detailed_matches = []
+            for match in matches:
+                region = MarsRegion.objects.filter(region=match['region']).first()
+                if region:
+                    detailed_matches.append({
+                        'region_id': region.id,
+                        'region_name': region.region,
+                        'score': match['score'],
+                        'reasons': match['reasons'],
+                        'latitude': region.latitude_deg,
+                        'longitude': region.longitude_deg,
+                        'elevation': region.elevation_m,
+                        'ph': region.ph,
+                        'perchlorate_wt_pct': region.perchlorate_wt_pct,
+                        'water_release_wt_pct': region.water_release_wt_pct,
+                        'major_minerals': region.major_minerals,
+                        'terrain_type': region.terrain_type,
+                        'notes': region.notes
+                    })
+            
             return Response({
                 'crop': crop.crop,
                 'crop_details': {
                     'preferred_ph_range': crop.preferred_ph_range,
                     'soil_texture': crop.terrain_soil_texture,
                     'temperature_range': crop.temperature_range_c,
+                    'moisture_regime': crop.moisture_regime,
+                    'germination': crop.germination_on_mars_simulant,
+                    'biomass': crop.biomass,
+                    'flowered_seed': crop.flowered_seed
+                },
+                'top_matches': detailed_matches,
+                'total_regions_analyzed': len(regions)
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'])
+    def recommend_with_ai(self, request):
+        """Use Gemini AI to enhance crop recommendations with insights."""
+        crop_name = request.data.get('crop')
+        top_n = int(request.data.get('top_n', 5))
+        
+        if not crop_name:
+            return Response({'error': 'Crop name required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Get basic recommendations first
+            crop = MarsCrop.objects.filter(crop__icontains=crop_name).first()
+            if not crop:
+                return Response({'error': f'Crop "{crop_name}" not found'}, status=status.HTTP_404_NOT_FOUND)
+            
+            regions = list(MarsRegion.objects.all())
+            matches = match_crop_to_regions(crop, regions, top_n)
+            
+            # Prepare data for AI analysis
+            recommendation_data = {
+                'crop': crop.crop,
+                'crop_requirements': {
+                    'ph_range': crop.preferred_ph_range,
+                    'soil_texture': crop.terrain_soil_texture,
+                    'temperature_range': crop.temperature_range_c,
                     'moisture_regime': crop.moisture_regime
                 },
-                'top_matches': matches
+                'top_regions': matches
+            }
+            
+            # Get AI-powered insights using Gemini
+            ai_insights = get_ai_recommendations(recommendation_data, matches)
+            
+            return Response({
+                'crop': crop.crop,
+                'recommendations': matches,
+                'ai_insights': ai_insights,
+                'data': recommendation_data,
+                'message': 'AI-enhanced recommendations' if ai_insights.get('enabled') else 'Algorithmic recommendations (Gemini not configured)'
             }, status=status.HTTP_200_OK)
             
         except Exception as e:
@@ -207,5 +277,76 @@ class MarsRegionViewSet(viewsets.ViewSet):
                     'notes': region.notes
                 })
             return Response(region_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'])
+    def analyze_region(self, request):
+        """Get AI-powered insights for a specific region and crop combination."""
+        region_name = request.data.get('region_name')
+        crop_name = request.data.get('crop_name')
+        score = request.data.get('score', 0)
+        
+        if not region_name or not crop_name:
+            return Response(
+                {'error': 'Both region_name and crop_name are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Get region data
+            region = MarsRegion.objects.filter(region=region_name).first()
+            if not region:
+                return Response(
+                    {'error': f'Region "{region_name}" not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Get crop data
+            crop = MarsCrop.objects.filter(crop__icontains=crop_name).first()
+            if not crop:
+                return Response(
+                    {'error': f'Crop "{crop_name}" not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Prepare region data for AI
+            region_data = {
+                'name': region.region,
+                'latitude': region.latitude_deg,
+                'longitude': region.longitude_deg,
+                'elevation': region.elevation_m,
+                'ph': region.ph,
+                'perchlorate_wt_pct': region.perchlorate_wt_pct,
+                'water_release_wt_pct': region.water_release_wt_pct,
+                'terrain_type': region.terrain_type,
+                'major_minerals': region.major_minerals,
+                'notes': region.notes
+            }
+            
+            # Prepare crop details
+            crop_details = {
+                'ph_range': crop.preferred_ph_range,
+                'soil_texture': crop.terrain_soil_texture,
+                'temperature_range': crop.temperature_range_c,
+                'moisture_regime': crop.moisture_regime
+            }
+            
+            # Get AI insights using Gemini
+            from .gemini_integration import gemini_engine
+            ai_insights = gemini_engine.analyze_region_compatibility(
+                crop_name=crop.crop,
+                crop_details=crop_details,
+                region_data=region_data,
+                score=int(score)
+            )
+            
+            return Response({
+                'region': region_name,
+                'crop': crop.crop,
+                'score': score,
+                'ai_insights': ai_insights
+            }, status=status.HTTP_200_OK)
+            
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
