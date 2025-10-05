@@ -5,6 +5,11 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
   const [aiInsights, setAiInsights] = useState(null)
   const [loadingAI, setLoadingAI] = useState(false)
   const [aiError, setAiError] = useState(null)
+  
+  // Q&A State
+  const [conversation, setConversation] = useState([])
+  const [currentQuestion, setCurrentQuestion] = useState('')
+  const [askingQuestion, setAskingQuestion] = useState(false)
 
   const handleClose = () => {
     setIsClosing(true)
@@ -12,11 +17,68 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
     setAiInsights(null)
     setLoadingAI(false)
     setAiError(null)
+    // Reset Q&A state
+    setConversation([])
+    setCurrentQuestion('')
     
     setTimeout(() => {
       setIsClosing(false) // Reset closing state
       onClose()
     }, 300) // Match animation duration
+  }
+
+  // Handle asking a question
+  const handleAskQuestion = async () => {
+    if (!currentQuestion.trim() || !cropMatches?.crop || !site?.name) return
+    
+    setAskingQuestion(true)
+    
+    // Find the match data for scoring
+    const regionMatch = cropMatches?.top_matches?.find(match => 
+      (match.region_name || match.region) === site.name
+    )
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/regions/ask_question/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          question: currentQuestion,
+          crop_name: cropMatches.crop,
+          region_name: site.name,
+          score: regionMatch?.score || 0,
+          conversation_history: conversation
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Add to conversation history
+        setConversation(prev => [...prev, {
+          question: currentQuestion,
+          answer: data.answer
+        }])
+        
+        // Clear input
+        setCurrentQuestion('')
+      } else {
+        console.error('Failed to get answer')
+      }
+    } catch (error) {
+      console.error('Error asking question:', error)
+    } finally {
+      setAskingQuestion(false)
+    }
+  }
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleAskQuestion()
+    }
   }
 
   const getScoreColor = (score) => {
@@ -299,6 +361,82 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                 </p>
               </div>
             )}
+          </div>
+        )}
+        
+        {/* INTERACTIVE Q&A SECTION */}
+        {cropMatches && aiInsights && !loadingAI && (
+          <div className="mb-6">
+            <h3 className="text-red-400 text-lg font-semibold mb-3 flex items-center">
+              💬 Ask Questions
+            </h3>
+            
+            {/* Conversation History */}
+            {conversation.length > 0 && (
+              <div className="space-y-3 mb-4">
+                {conversation.map((qa, index) => (
+                  <div key={index} className="space-y-2">
+                    {/* User Question */}
+                    <div className="bg-blue-900/20 border-l-4 border-blue-500 rounded-r-lg p-3">
+                      <div className="text-blue-300 text-xs mb-1 font-semibold">You asked:</div>
+                      <div className="text-gray-200 text-sm">{qa.question}</div>
+                    </div>
+                    
+                    {/* AI Answer */}
+                    <div className="bg-green-900/20 border-l-4 border-green-500 rounded-r-lg p-3">
+                      <div className="text-green-300 text-xs mb-1 font-semibold">🤖 AI Answer:</div>
+                      <div className="text-gray-200 text-sm leading-relaxed">{qa.answer}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Question Input */}
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+              <textarea
+                value={currentQuestion}
+                onChange={(e) => setCurrentQuestion(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder={`Ask anything about growing ${cropMatches.crop} at ${site.name}...
+Examples:
+• "What if we use hydroponics instead?"
+• "How much water would we need daily?"
+• "Can we grow this year-round?"`}
+                className="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 focus:border-red-500 outline-none resize-none text-sm"
+                rows="3"
+                disabled={askingQuestion}
+              />
+              
+              <div className="flex justify-between items-center mt-3">
+                <span className="text-gray-400 text-xs">
+                  {conversation.length > 0 && `${conversation.length} question(s) asked`}
+                </span>
+                <button
+                  onClick={handleAskQuestion}
+                  disabled={!currentQuestion.trim() || askingQuestion}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+                >
+                  {askingQuestion ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Thinking...
+                    </>
+                  ) : (
+                    <>
+                      <span>Ask AI</span>
+                      <span>→</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              
+              {conversation.length === 0 && (
+                <div className="mt-3 text-gray-500 text-xs italic">
+                  💡 Tip: Ask specific questions about cultivation challenges, timelines, or alternatives
+                </div>
+              )}
+            </div>
           </div>
         )}
         

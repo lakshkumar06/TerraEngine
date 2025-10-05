@@ -351,6 +351,80 @@ This location presents {outlook} conditions for {crop_name} cultivation. The com
             return "challenging"
         else:
             return "not_recommended"
+    
+    def answer_question(self, question: str, context: Dict) -> Dict:
+        """
+        Answer a user's question about a specific crop-region combination
+        
+        Args:
+            question: User's question
+            context: Dictionary with crop_name, region_name, score, and optionally conversation_history
+            
+        Returns:
+            Dictionary with answer and metadata
+        """
+        if not self.enabled:
+            return {
+                'enabled': False,
+                'message': 'AI Q&A not available',
+                'answer': 'Please configure Gemini API to enable interactive Q&A.'
+            }
+        
+        try:
+            crop_name = context.get('crop_name', 'Unknown')
+            region_name = context.get('region_name', 'Unknown')
+            score = context.get('score', 0)
+            conversation_history = context.get('conversation_history', [])
+            
+            # Build context-aware prompt
+            prompt = f"""You are a Mars agriculture expert. A user is exploring growing {crop_name} at {region_name} (compatibility score: {score}/10).
+
+CONTEXT:
+- Crop: {crop_name}
+- Location: {region_name} on Mars
+- Compatibility Score: {score}/10
+
+USER'S QUESTION: "{question}"
+
+Provide a focused, concise answer (2-4 sentences, 50-100 words). Be specific to {crop_name} and {region_name}. 
+
+"""
+            
+            # Add conversation history if exists
+            if conversation_history:
+                prompt += "\nPREVIOUS CONVERSATION:\n"
+                for i, qa in enumerate(conversation_history[-3:]):  # Last 3 exchanges
+                    prompt += f"Q: {qa['question']}\nA: {qa['answer']}\n\n"
+            
+            prompt += f"""
+Now answer the user's current question: "{question}"
+
+Guidelines:
+- Keep it brief (2-4 sentences)
+- Be specific to {crop_name} at {region_name}
+- If explaining why something won't work, give a short alternative suggestion
+- Use practical, actionable language
+- Don't repeat information from previous answers
+"""
+            
+            # Generate answer
+            response = self.model.generate_content(prompt)
+            answer_text = response.text.strip()
+            
+            return {
+                'enabled': True,
+                'answer': answer_text,
+                'question': question,
+                'timestamp': 'now'
+            }
+            
+        except Exception as e:
+            print(f"Error answering question: {e}")
+            return {
+                'enabled': False,
+                'error': str(e),
+                'answer': f"I encountered an error processing your question. Please try rephrasing or ask something else about {context.get('crop_name', 'this crop')} cultivation at {context.get('region_name', 'this location')}."
+            }
 
 
 # Initialize global instance

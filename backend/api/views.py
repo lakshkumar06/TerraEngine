@@ -350,3 +350,42 @@ class MarsRegionViewSet(viewsets.ViewSet):
             
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'])
+    def ask_question(self, request):
+        """Interactive Q&A - Ask follow-up questions about a region-crop combination."""
+        question = request.data.get('question')
+        crop_name = request.data.get('crop_name')
+        region_name = request.data.get('region_name')
+        score = request.data.get('score', 0)
+        conversation_history = request.data.get('conversation_history', [])
+        
+        if not question or not crop_name or not region_name:
+            return Response(
+                {'error': 'question, crop_name, and region_name are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Prepare context for AI
+            context = {
+                'crop_name': crop_name,
+                'region_name': region_name,
+                'score': score,
+                'conversation_history': conversation_history
+            }
+            
+            # Get answer from Gemini
+            from .gemini_integration import gemini_engine
+            result = gemini_engine.answer_question(question, context)
+            
+            return Response({
+                'question': question,
+                'answer': result.get('answer', 'No answer available'),
+                'enabled': result.get('enabled', False),
+                'crop': crop_name,
+                'region': region_name
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
