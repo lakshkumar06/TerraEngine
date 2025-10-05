@@ -203,7 +203,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
   // If no site is selected, show ranked results
   if (!site && cropMatches?.top_matches) {
     return (
-      <div className="absolute top-5 right-5 w-116 max-h-[calc(100vh-40px)] overflow-y-auto z-50 rounded-[20px] bg-gray-900 shadow-2xl">
+      <div className="absolute top-5 right-5 w-116 max-h-[calc(100vh-40px)] overflow-y-auto z-50 rounded-[20px] bg-gray-900 shadow-2xl hide-scrollbar">
         <div className="text-white p-5">
           <h2 className="text-xl font-semibold mb-4 text-gray-200 sticky top-0 bg-gray-900 pb-2 z-10">
             {cropMatches.crop} - Top {cropMatches.top_matches.length} Growing Regions
@@ -307,7 +307,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
   }
 
   return (
-    <div className={`absolute top-5 right-5 w-106 max-h-[calc(100vh-40px)] overflow-y-auto z-50 rounded-[20px] bg-gray-900 shadow-2xl ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
+    <div className={`absolute top-5 right-5 w-106 max-h-[calc(100vh-40px)] overflow-y-auto z-50 rounded-[20px] bg-gray-900 shadow-2xl hide-scrollbar ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
       <div className="text-white p-5">
         <button 
           onClick={handleClose}

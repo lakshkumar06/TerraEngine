@@ -3,10 +3,15 @@
 * {
   box-sizing: border-box;
 }
+.heroheading{
+  font-family: "Rajdhani", sans-serif !important;
 
+}
 html, body {
   margin: 0;
   padding: 0;
+  font-family: "Red Hat Display", sans-serif;
+
 }
 
 #root {

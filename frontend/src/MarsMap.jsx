@@ -5,6 +5,7 @@ import TileLayer from 'ol/layer/Tile';
 import XYZ from 'ol/source/XYZ';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
+import { defaults as defaultControls } from 'ol/control';
 import Feature from 'ol/Feature';
 import Point from 'ol/geom/Point';
 import { Style, Circle, Fill, Stroke, Text } from 'ol/style';
@@ -160,6 +161,7 @@ const MarsMap = () => {
     const map = new Map({
       target: mapRef.current,
       layers: [marsLayer, vectorLayer],
+      controls: defaultControls({ zoom: false, rotate: false, attribution: false }),
       view: new View({
         center: [0, 0], // Center on Mars equator
         zoom: 2,
@@ -272,6 +274,12 @@ const MarsMap = () => {
       {/* Map */}
       <div ref={mapRef} className="w-full h-full" />
       
+      {/* Top-left Logo Badge */}
+      <div className="absolute top-8 left-8 bg-white/8 rounded-xl px-3 py-2 flex items-center gap-2 shadow-md pointer-events-none border-[0.5px] border-[#c2c2c2bc]">
+        <img src="/logo.png" alt="TerraEngine logo" className="w-12 rounded-full" />
+        <span className="text-white font-medium text-md">TerraEngine</span>
+      </div>
+
       {/* Right Panel */}
       <SiteDetailsPanel 
         site={selectedSite} 
