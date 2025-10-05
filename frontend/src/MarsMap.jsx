@@ -152,11 +152,7 @@ const MarsMap = () => {
           fill: new Fill({ color: '#ff4444' }),
           stroke: new Stroke({ color: '#ffffff', width: 3 })
         }),
-        text: new Text({
-          text: '📍',
-          scale: 1.2,
-          offsetY: -15
-        })
+        
       })
     });
 

@@ -78,7 +78,7 @@ const Search = () => {
           disabled={isLoading || !searchQuery.trim()}
           className="px-8 py-4 text-lg bg-red-500 text-white border-none rounded-md cursor-pointer transition-colors duration-300 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? 'Searching...' : 'Find Growing Regions'}
+          {isLoading ? 'Searching...' : 'Search'}
         </button>
       </div>
 

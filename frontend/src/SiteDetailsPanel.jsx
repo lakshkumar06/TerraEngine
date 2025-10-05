@@ -93,10 +93,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
   }
 
   const getScoreColor = (score) => {
-    if (score >= 5) return 'text-green-400'
-    if (score >= 2) return 'text-yellow-400'
-    if (score >= 0) return 'text-orange-400'
-    return 'text-red-400'
+    return 'text-gray-300'
   }
 
   // Fetch AI insights when a region is selected
@@ -208,7 +205,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
     return (
       <div className="absolute top-5 right-5 w-116 max-h-[calc(100vh-40px)] overflow-y-auto z-50 rounded-[20px] bg-gray-900 shadow-2xl">
         <div className="text-white p-5">
-          <h2 className="text-xl font-semibold mb-4 text-red-400 sticky top-0 bg-gray-900 pb-2 z-10">
+          <h2 className="text-xl font-semibold mb-4 text-gray-200 sticky top-0 bg-gray-900 pb-2 z-10">
             {cropMatches.crop} - Top {cropMatches.top_matches.length} Growing Regions
           </h2>
           
@@ -218,7 +215,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
               return (
                 <div 
                   key={`${regionName}-${index}`}
-                  className="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition-colors border border-gray-700 hover:border-red-500"
+                  className="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition-colors border border-gray-700 hover:border-gray-500"
                   onClick={() => {
                     const region = regions.find(r => r.name === regionName || r.name === match.region);
                     if (region) {
@@ -314,25 +311,25 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
       <div className="text-white p-5">
         <button 
           onClick={handleClose}
-          className="bg-red-500 text-white border-none px-4 py-2 rounded cursor-pointer mb-5 transition-colors duration-300 hover:bg-red-600 sticky top-0 z-20"
+          className="bg-gray-700 text-white border-none px-4 py-2 rounded cursor-pointer mb-5 transition-colors duration-300 hover:bg-gray-600 sticky top-0 z-20"
         >
-          ← Back to List
+          ←
         </button>
         
-        <h2 className="text-red-500 mb-5 text-xl font-bold">
+        <h2 className="text-gray-200 mb-5 text-xl font-bold">
           {site.name}
         </h2>
         
         {/* Compatibility Overview */}
         {regionMatch && cropMatches && (
-          <div className={`mb-6 rounded-lg p-4 border ${getCompatibilityLevel(regionMatch.score).bg} ${getCompatibilityLevel(regionMatch.score).border}`}>
+          <div className={`mb-6 rounded-lg p-4 border bg-gray-800/50 border-gray-700`}>
             <div className="flex justify-between items-center mb-3">
               <h3 className="text-lg font-semibold text-white">Growing Compatibility</h3>
-              <div className={`text-3xl font-bold text-${getCompatibilityLevel(regionMatch.score).color}-400`}>
+              <div className={`text-3xl font-bold text-orange-700`}>
                 {regionMatch.score}/10
               </div>
             </div>
-            <div className={`text-sm font-medium text-${getCompatibilityLevel(regionMatch.score).color}-300`}>
+            <div className={`text-sm font-medium text-gray-300`}>
               {getCompatibilityLevel(regionMatch.score).level} match for {cropMatches.crop}
             </div>
           </div>
@@ -342,14 +339,14 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         {cropMatches && costData && !loadingCost && !costError && (
           <div className="mb-6 space-y-4">
             {/* One-Time Cost */}
-            <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 rounded-lg p-4 border-2 border-blue-500/40">
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-blue-300 text-sm font-semibold mb-1">💰 One-Time Setup Cost</h3>
+                  <h3 className="text-gray-300 text-sm font-semibold mb-1">One-Time Setup Cost</h3>
                   <p className="text-gray-400 text-xs">Initial investment for infrastructure</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-blue-400">
+                  <div className="text-2xl font-bold text-gray-200">
                     ${(costData.one_time_cost / 1000000).toFixed(2)}M
                   </div>
                   <p className="text-xs text-gray-400">USD</p>
@@ -358,14 +355,14 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
             </div>
             
             {/* Sustained Cost */}
-            <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 rounded-lg p-4 border-2 border-purple-500/40">
+            <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-purple-300 text-sm font-semibold mb-1">🔄 Annual Sustained Cost</h3>
+                  <h3 className="text-gray-300 text-sm font-semibold mb-1">Annual Sustained Cost</h3>
                   <p className="text-gray-400 text-xs">Yearly operational expenses</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-purple-400">
+                  <div className="text-2xl font-bold text-gray-200">
                     ${(costData.annual_sustained_cost / 1000).toFixed(0)}K
                   </div>
                   <p className="text-xs text-gray-400">USD per year</p>
@@ -380,7 +377,6 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                 className="w-full px-4 py-3 flex justify-between items-center hover:bg-gray-750 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">📊</span>
                   <span className="text-white font-semibold text-sm">Detailed Cost Breakdown</span>
                 </div>
                 <span className={`text-gray-400 transform transition-transform ${showDetailedCosts ? 'rotate-180' : ''}`}>
@@ -393,8 +389,8 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                   <div className="space-y-3">
                     {/* One-Time Costs */}
                     <div>
-                      <h4 className="text-blue-400 font-semibold text-sm mb-2 flex items-center">
-                        <span className="mr-2">💎</span> Initial Setup Costs
+                      <h4 className="text-gray-300 font-semibold text-sm mb-2 flex items-center">
+                        Initial Setup Costs
                       </h4>
                       <div className="space-y-2 pl-2">
                         {['transportation', 'habitat_construction', 'equipment', 'initial_supplies', 'energy_systems', 'water_recycling', 'soil_preparation', 'climate_control'].map((key) => {
@@ -408,7 +404,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                                 </div>
                                 <div className="text-gray-400 text-xs mt-0.5">{item.description}</div>
                               </div>
-                              <div className="text-blue-300 font-bold ml-2 whitespace-nowrap">
+                              <div className="text-gray-200 font-bold ml-2 whitespace-nowrap">
                                 ${(item.cost / 1000000).toFixed(2)}M
                               </div>
                             </div>
@@ -419,8 +415,8 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                     
                     {/* Annual Costs */}
                     <div className="pt-3 border-t border-gray-700">
-                      <h4 className="text-purple-400 font-semibold text-sm mb-2 flex items-center">
-                        <span className="mr-2">📅</span> Annual Operating Costs
+                      <h4 className="text-gray-300 font-semibold text-sm mb-2 flex items-center">
+                        Annual Operating Costs
                       </h4>
                       <div className="space-y-2 pl-2">
                         {['annual_energy', 'annual_water', 'annual_nutrients', 'annual_maintenance', 'annual_labor'].map((key) => {
@@ -434,7 +430,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                                 </div>
                                 <div className="text-gray-400 text-xs mt-0.5">{item.description}</div>
                               </div>
-                              <div className="text-purple-300 font-bold ml-2 whitespace-nowrap">
+                              <div className="text-gray-200 font-bold ml-2 whitespace-nowrap">
                                 ${(item.cost / 1000).toFixed(0)}K
                               </div>
                             </div>
@@ -445,8 +441,8 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                     
                     {/* AI Note if fallback */}
                     {costData.note && (
-                      <div className="mt-3 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded text-xs text-yellow-300">
-                        ⚠️ {costData.note}
+                      <div className="mt-3 p-2 bg-gray-800 border border-gray-700 rounded text-xs text-gray-300">
+                        {costData.note}
                       </div>
                     )}
                   </div>
@@ -460,7 +456,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         {cropMatches && loadingCost && (
           <div className="mb-6 bg-gray-800 rounded-lg p-6 border border-gray-700">
             <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mr-3"></div>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-300 mr-3"></div>
               <span className="text-gray-300 text-sm">Calculating costs...</span>
             </div>
           </div>
@@ -468,8 +464,8 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         
         {/* Error State for Costs */}
         {cropMatches && costError && (
-          <div className="mb-6 bg-red-900/20 rounded-lg p-4 border border-red-500/30">
-            <p className="text-red-300 text-sm">⚠️ {costError}</p>
+          <div className="mb-6 bg-gray-800 rounded-lg p-4 border border-gray-700">
+            <p className="text-gray-300 text-sm">{costError}</p>
           </div>
         )}
         
@@ -477,11 +473,11 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         {cropMatches && (
           <div className="mb-6">
             <div className="flex items-center mb-3">
-              <h3 className="text-red-400 text-lg font-semibold flex items-center">
-                <span className="mr-2">🤖</span> AI Insights
+              <h3 className="text-gray-200 text-lg font-semibold flex items-center">
+                AI Insights
               </h3>
               {aiInsights?.enabled && (
-                <span className="ml-2 px-2 py-1 text-xs bg-green-900/30 text-green-400 rounded">
+                <span className="ml-2 px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded">
                   Powered by Gemini
                 </span>
               )}
@@ -490,20 +486,20 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
             {loadingAI && (
               <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
                 <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500 mr-3"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-300 mr-3"></div>
                   <span className="text-gray-300">Analyzing region with AI...</span>
                 </div>
               </div>
             )}
             
             {aiError && (
-              <div className="bg-red-900/20 rounded-lg p-4 border border-red-500/30">
-                <p className="text-red-300 text-sm">{aiError}</p>
+              <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                <p className="text-gray-300 text-sm">{aiError}</p>
               </div>
             )}
             
             {!loadingAI && !aiError && aiInsights && (
-              <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-5 border-2 border-red-500/30 shadow-lg">
+              <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-lg p-5 border border-gray-700 shadow-lg">
                 <div className="prose prose-invert prose-sm max-w-none">
                   <div className="text-gray-200 whitespace-pre-wrap leading-relaxed" 
                        style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
@@ -539,12 +535,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                 {aiInsights.recommendation_level && (
                   <div className={`mt-4 pt-4 border-t border-gray-700 flex items-center justify-between`}>
                     <span className="text-gray-400 text-sm">AI Recommendation Level:</span>
-                    <span className={`px-3 py-1 rounded font-medium text-sm ${
-                      aiInsights.recommendation_level === 'highly_recommended' ? 'bg-green-900/30 text-green-400' :
-                      aiInsights.recommendation_level === 'recommended' ? 'bg-yellow-900/30 text-yellow-400' :
-                      aiInsights.recommendation_level === 'challenging' ? 'bg-orange-900/30 text-orange-400' :
-                      'bg-red-900/30 text-red-400'
-                    }`}>
+                    <span className={`px-3 py-1 rounded font-medium text-sm bg-gray-800 text-gray-200`}>
                       {aiInsights.recommendation_level.replace('_', ' ').toUpperCase()}
                     </span>
                   </div>
@@ -565,8 +556,8 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         {/* INTERACTIVE Q&A SECTION */}
         {cropMatches && aiInsights && !loadingAI && (
           <div className="mb-6">
-            <h3 className="text-red-400 text-lg font-semibold mb-3 flex items-center">
-              💬 Ask Questions
+            <h3 className="text-gray-200 text-lg font-semibold mb-3 flex items-center">
+              Ask Questions
             </h3>
             
             {/* Conversation History */}
@@ -575,14 +566,14 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                 {conversation.map((qa, index) => (
                   <div key={index} className="space-y-2">
                     {/* User Question */}
-                    <div className="bg-blue-900/20 border-l-4 border-blue-500 rounded-r-lg p-3">
-                      <div className="text-blue-300 text-xs mb-1 font-semibold">You asked:</div>
+                    <div className="bg-gray-800 border-l-4 border-gray-600 rounded-r-lg p-3">
+                      <div className="text-gray-300 text-xs mb-1 font-semibold">You asked:</div>
                       <div className="text-gray-200 text-sm">{qa.question}</div>
                     </div>
                     
                     {/* AI Answer */}
-                    <div className="bg-green-900/20 border-l-4 border-green-500 rounded-r-lg p-3">
-                      <div className="text-green-300 text-xs mb-1 font-semibold">🤖 AI Answer:</div>
+                    <div className="bg-gray-800 border-l-4 border-gray-600 rounded-r-lg p-3">
+                      <div className="text-gray-300 text-xs mb-1 font-semibold">AI Answer:</div>
                       <div className="text-gray-200 text-sm leading-relaxed">{qa.answer}</div>
                     </div>
                   </div>
@@ -601,7 +592,7 @@ Examples:
 • "What if we use hydroponics instead?"
 • "How much water would we need daily?"
 • "Can we grow this year-round?"`}
-                className="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 focus:border-red-500 outline-none resize-none text-sm"
+                className="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 focus:border-gray-500 outline-none resize-none text-sm"
                 rows="3"
                 disabled={askingQuestion}
               />
@@ -613,17 +604,16 @@ Examples:
                 <button
                   onClick={handleAskQuestion}
                   disabled={!currentQuestion.trim() || askingQuestion}
-                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
+                  className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
                 >
                   {askingQuestion ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-300"></div>
                       Thinking...
                     </>
                   ) : (
                     <>
                       <span>Ask AI</span>
-                      <span>→</span>
                     </>
                   )}
                 </button>
@@ -631,7 +621,7 @@ Examples:
               
               {conversation.length === 0 && (
                 <div className="mt-3 text-gray-500 text-xs italic">
-                  💡 Tip: Ask specific questions about cultivation challenges, timelines, or alternatives
+                  Tip: Ask specific questions about cultivation challenges, timelines, or alternatives
                 </div>
               )}
             </div>
@@ -641,16 +631,12 @@ Examples:
         {/* Key Compatibility Factors */}
         {regionMatch && (
           <div className="mb-6">
-            <h3 className="text-red-400 mb-3 text-lg font-semibold">Key Compatibility Factors</h3>
+            <h3 className="text-gray-200 mb-3 text-lg font-semibold">Key Compatibility Factors</h3>
             <div className="space-y-2">
               {regionMatch.reasons.map((reason, index) => (
                 <div key={index} className="bg-gray-800 rounded p-3 text-sm">
                   <div className="flex items-start">
-                    <span className={`w-2 h-2 rounded-full mt-2 mr-3 ${
-                      reason.toLowerCase().includes('good') || reason.toLowerCase().includes('suitable') ? 'bg-green-400' :
-                      reason.toLowerCase().includes('moderate') || reason.toLowerCase().includes('acceptable') ? 'bg-yellow-400' :
-                      reason.toLowerCase().includes('poor') || reason.toLowerCase().includes('unsuitable') ? 'bg-red-400' : 'bg-gray-400'
-                    }`}></span>
+                    <span className={`w-2 h-2 rounded-full mt-2 mr-3 bg-gray-500`}></span>
                     <span className="text-gray-300">{reason}</span>
                   </div>
                 </div>
@@ -662,14 +648,10 @@ Examples:
         {/* Recommendations */}
         {regionMatch && (
           <div className="mb-6">
-            <h3 className="text-red-400 mb-3 text-lg font-semibold">Growing Recommendations</h3>
+            <h3 className="text-gray-200 mb-3 text-lg font-semibold">Growing Recommendations</h3>
             <div className="space-y-3">
               {getRecommendations(site, regionMatch).map((rec, index) => (
-                <div key={index} className={`rounded-lg p-3 border-l-4 ${
-                  rec.type === 'success' ? 'bg-green-900/20 border-green-400' :
-                  rec.type === 'warning' ? 'bg-yellow-900/20 border-yellow-400' :
-                  rec.type === 'info' ? 'bg-blue-900/20 border-blue-400' : 'bg-gray-800'
-                }`}>
+                <div key={index} className={`rounded-lg p-3 border-l-4 bg-gray-800 border-gray-600`}>
                   <div className="font-medium text-white text-sm mb-1">{rec.title}</div>
                   <div className="text-gray-300 text-xs">{rec.message}</div>
                 </div>
@@ -680,7 +662,7 @@ Examples:
         
         {/* Site Details (Minimized) */}
         <div className="mb-6">
-          <h3 className="text-red-400 mb-3 text-lg font-semibold">Site Conditions</h3>
+          <h3 className="text-gray-200 mb-3 text-lg font-semibold">Site Conditions</h3>
           <div className="bg-gray-800 rounded-lg p-4 text-sm">
             <div className="grid grid-cols-2 gap-3">
               {site.elevation && (
@@ -714,19 +696,19 @@ Examples:
         {/* Action Plan */}
         {regionMatch && (
           <div className="mb-6">
-            <h3 className="text-red-400 mb-3 text-lg font-semibold">Next Steps</h3>
+            <h3 className="text-gray-200 mb-3 text-lg font-semibold">Next Steps</h3>
             <div className="bg-gray-800 rounded-lg p-4">
               <div className="text-sm text-gray-300 space-y-2">
                 <div className="flex items-start">
-                  <span className="text-red-400 mr-2">1.</span>
+                  <span className="text-gray-400 mr-2">1.</span>
                   <span>Assess soil preparation requirements based on compatibility score</span>
                 </div>
                 <div className="flex items-start">
-                  <span className="text-red-400 mr-2">2.</span>
+                  <span className="text-gray-400 mr-2">2.</span>
                   <span>Plan irrigation and environmental control systems</span>
                 </div>
                 <div className="flex items-start">
-                  <span className="text-red-400 mr-2">3.</span>
+                  <span className="text-gray-400 mr-2">3.</span>
                   <span>Consider crop rotation and companion planting strategies</span>
                 </div>
               </div>
