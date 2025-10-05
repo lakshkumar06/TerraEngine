@@ -1,0 +1,38 @@
+[
+    {
+      "id": "SIM-001",
+      "name": "Gale Crater Base (Curiosity Site)",
+      "location": "Near Equatorial/Ancient Lake Bed",
+      "lat": -4.5895,
+      "lon": 7.4417,
+      "simulator_parameters": {
+        "regolith_type": "Fine-Grained Sedimentary",
+        "water_availability": "Moderate (Requires Drilling/Extraction)",
+        "perchlorate_level": "High",
+        "required_pretreatment": "Intensive Regolith Washing/Heating",
+        "required_nutrient_additions": [
+          {"nutrient": "Reactive Nitrogen", "priority": "Critical"},
+          {"nutrient": "Potassium", "priority": "Low"}
+        ],
+        "hazards": ["Perchlorate Toxicity", "Nanophase Iron Oxide"]
+      }
+    },
+    {
+      "id": "SIM-002",
+      "name": "Utopia Planitia Base (Subsurface Ice)",
+      "location": "Northern Mid-Latitudes/Vast Plain",
+      "lat": 20.7,
+      "lon": 87.6,
+      "simulator_parameters": {
+        "regolith_type": "Volcanic/Basaltic",
+        "water_availability": "High (Subsurface Ice Deposit)",
+        "perchlorate_level": "Variable (Moderate)",
+        "required_pretreatment": "Moderate Washing",
+        "required_nutrient_additions": [
+          {"nutrient": "Reactive Nitrogen", "priority": "Critical"},
+          {"nutrient": "Organic Carbon", "priority": "High"}
+        ],
+        "hazards": ["Seasonal Dust Storms", "Potential Hexavalent Chromium ($Cr^{6+}$)"]
+      }
+    }
+  ]
