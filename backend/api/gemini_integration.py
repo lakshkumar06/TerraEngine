@@ -425,6 +425,189 @@ Guidelines:
                 'error': str(e),
                 'answer': f"I encountered an error processing your question. Please try rephrasing or ask something else about {context.get('crop_name', 'this crop')} cultivation at {context.get('region_name', 'this location')}."
             }
+    
+    def analyze_cultivation_costs(self, crop_name: str, crop_details: Dict, region_data: Dict, score: int) -> Dict:
+        """
+        Generate cost analysis for growing a crop in a specific Mars region
+        
+        Args:
+            crop_name: Name of the crop
+            crop_details: Dictionary with crop requirements
+            region_data: Dictionary containing region information
+            score: Compatibility score from algorithm
+            
+        Returns:
+            Dictionary with cost breakdown (one-time, sustained, detailed)
+        """
+        if not self.enabled:
+            return self._generate_fallback_cost_analysis(crop_name, region_data, score)
+        
+        try:
+            # Create detailed prompt for cost analysis
+            prompt = f"""You are a Mars colonization economist specializing in agricultural cost estimation.
+
+Analyze the costs for setting up and maintaining {crop_name} cultivation at {region_data.get('name', 'Unknown')} on Mars.
+
+REGION: {region_data.get('name', 'Unknown')}
+CROP: {crop_name}
+COMPATIBILITY SCORE: {score}/10
+LOCATION: {region_data.get('latitude', 'Unknown')}, {region_data.get('longitude', 'Unknown')}
+TERRAIN: {region_data.get('terrain_type', 'Unknown')}
+ELEVATION: {region_data.get('elevation', 'Unknown')} meters
+
+Provide REALISTIC cost estimates in USD. Generate:
+
+1. **ONE-TIME SETUP COST** (total initial investment):
+   - Give a single total figure for initial setup
+   - Consider: transportation, habitat construction, equipment, initial supplies
+   
+2. **ANNUAL SUSTAINED COST** (per year operational cost):
+   - Give a single annual figure for ongoing operations
+   - Consider: energy, water recycling, nutrients, maintenance, labor
+
+3. **DETAILED BREAKDOWN** (itemized list):
+   Format as JSON with these exact keys:
+   {{
+     "transportation": {{"cost": number, "description": "brief note"}},
+     "habitat_construction": {{"cost": number, "description": "brief note"}},
+     "equipment": {{"cost": number, "description": "brief note"}},
+     "initial_supplies": {{"cost": number, "description": "brief note"}},
+     "energy_systems": {{"cost": number, "description": "brief note"}},
+     "water_recycling": {{"cost": number, "description": "brief note"}},
+     "soil_preparation": {{"cost": number, "description": "brief note"}},
+     "climate_control": {{"cost": number, "description": "brief note"}},
+     "annual_energy": {{"cost": number, "description": "per year"}},
+     "annual_water": {{"cost": number, "description": "per year"}},
+     "annual_nutrients": {{"cost": number, "description": "per year"}},
+     "annual_maintenance": {{"cost": number, "description": "per year"}},
+     "annual_labor": {{"cost": number, "description": "per year"}}
+   }}
+
+IMPORTANT:
+- Make costs vary based on the compatibility score ({score}/10)
+- Lower scores = higher costs (more preparation needed)
+- Higher scores = lower costs (better natural conditions)
+- Be SPECIFIC to {crop_name} needs at {region_data.get('name', 'Unknown')}
+- Consider actual Mars mission economics
+- Use round numbers (no cents)
+- Return ONLY the JSON data, no additional text
+
+Return format:
+{{
+  "one_time_cost": total_number,
+  "annual_sustained_cost": total_number,
+  "breakdown": {{detailed breakdown as above}}
+}}"""
+
+            # Generate cost analysis
+            response = self.model.generate_content(prompt)
+            ai_text = response.text.strip()
+            
+            # Try to parse JSON from response
+            try:
+                # Remove markdown code blocks if present
+                if '```json' in ai_text:
+                    ai_text = ai_text.split('```json')[1].split('```')[0].strip()
+                elif '```' in ai_text:
+                    ai_text = ai_text.split('```')[1].split('```')[0].strip()
+                
+                cost_data = json.loads(ai_text)
+                cost_data['enabled'] = True
+                return cost_data
+                
+            except json.JSONDecodeError:
+                print(f"Failed to parse cost JSON, using fallback")
+                return self._generate_fallback_cost_analysis(crop_name, region_data, score)
+            
+        except Exception as e:
+            print(f"Error generating cost analysis: {e}")
+            return self._generate_fallback_cost_analysis(crop_name, region_data, score)
+    
+    def _generate_fallback_cost_analysis(self, crop_name: str, region_data: Dict, score: int) -> Dict:
+        """Generate cost estimates without AI (fallback mode with variance)"""
+        import hashlib
+        
+        region_name = region_data.get('name', 'Unknown')
+        
+        # Create a deterministic seed for consistent but varied costs
+        seed = int(hashlib.md5(f"{crop_name}{region_name}".encode()).hexdigest()[:8], 16)
+        
+        # Base costs that scale inversely with compatibility score
+        # Lower score = higher costs
+        score_multiplier = 2.0 - (score / 10.0)  # Range: 1.0 to 2.0
+        variance = (seed % 20000) / 100  # Add some variance
+        
+        # One-time costs (in thousands USD)
+        base_one_time = 5000000  # $5M base
+        one_time_cost = int((base_one_time * score_multiplier) + variance)
+        
+        # Annual costs (in thousands USD)
+        base_annual = 500000  # $500K base
+        annual_cost = int((base_annual * score_multiplier) + (variance / 10))
+        
+        # Detailed breakdown
+        breakdown = {
+            "transportation": {
+                "cost": int(one_time_cost * 0.35),
+                "description": f"SpaceX Starship cargo delivery to {region_name}"
+            },
+            "habitat_construction": {
+                "cost": int(one_time_cost * 0.25),
+                "description": "Pressurized greenhouse with radiation shielding"
+            },
+            "equipment": {
+                "cost": int(one_time_cost * 0.15),
+                "description": f"Specialized equipment for {crop_name} cultivation"
+            },
+            "initial_supplies": {
+                "cost": int(one_time_cost * 0.10),
+                "description": "Seeds, nutrients, soil amendments, tools"
+            },
+            "energy_systems": {
+                "cost": int(one_time_cost * 0.08),
+                "description": "Solar panels and battery storage systems"
+            },
+            "water_recycling": {
+                "cost": int(one_time_cost * 0.04),
+                "description": "Closed-loop water purification and recycling"
+            },
+            "soil_preparation": {
+                "cost": int(one_time_cost * 0.02),
+                "description": f"Perchlorate removal and pH adjustment for {crop_name}"
+            },
+            "climate_control": {
+                "cost": int(one_time_cost * 0.01),
+                "description": "HVAC systems for temperature/humidity control"
+            },
+            "annual_energy": {
+                "cost": int(annual_cost * 0.40),
+                "description": "Power for lighting, heating, and life support"
+            },
+            "annual_water": {
+                "cost": int(annual_cost * 0.15),
+                "description": "Water extraction and recycling operations"
+            },
+            "annual_nutrients": {
+                "cost": int(annual_cost * 0.20),
+                "description": f"Fertilizers and supplements for {crop_name}"
+            },
+            "annual_maintenance": {
+                "cost": int(annual_cost * 0.15),
+                "description": "Equipment repairs and system upkeep"
+            },
+            "annual_labor": {
+                "cost": int(annual_cost * 0.10),
+                "description": "Agricultural technician time allocation"
+            }
+        }
+        
+        return {
+            'enabled': False,
+            'one_time_cost': one_time_cost,
+            'annual_sustained_cost': annual_cost,
+            'breakdown': breakdown,
+            'note': 'AI-powered cost analysis unavailable. Using algorithmic estimates.'
+        }
 
 
 # Initialize global instance

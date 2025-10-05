@@ -389,3 +389,74 @@ class MarsRegionViewSet(viewsets.ViewSet):
             
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'])
+    def analyze_costs(self, request):
+        """Get AI-powered cost analysis for growing a crop in a specific region."""
+        region_name = request.data.get('region_name')
+        crop_name = request.data.get('crop_name')
+        score = request.data.get('score', 0)
+        
+        if not region_name or not crop_name:
+            return Response(
+                {'error': 'Both region_name and crop_name are required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Get region data
+            region = MarsRegion.objects.filter(region=region_name).first()
+            if not region:
+                return Response(
+                    {'error': f'Region "{region_name}" not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Get crop data
+            crop = MarsCrop.objects.filter(crop__icontains=crop_name).first()
+            if not crop:
+                return Response(
+                    {'error': f'Crop "{crop_name}" not found'}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+            
+            # Prepare region data
+            region_data = {
+                'name': region.region,
+                'latitude': region.latitude_deg,
+                'longitude': region.longitude_deg,
+                'elevation': region.elevation_m,
+                'ph': region.ph,
+                'perchlorate_wt_pct': region.perchlorate_wt_pct,
+                'water_release_wt_pct': region.water_release_wt_pct,
+                'terrain_type': region.terrain_type,
+                'major_minerals': region.major_minerals,
+                'notes': region.notes
+            }
+            
+            # Prepare crop details
+            crop_details = {
+                'ph_range': crop.preferred_ph_range,
+                'soil_texture': crop.terrain_soil_texture,
+                'temperature_range': crop.temperature_range_c,
+                'moisture_regime': crop.moisture_regime
+            }
+            
+            # Get cost analysis using Gemini
+            from .gemini_integration import gemini_engine
+            cost_analysis = gemini_engine.analyze_cultivation_costs(
+                crop_name=crop.crop,
+                crop_details=crop_details,
+                region_data=region_data,
+                score=int(score)
+            )
+            
+            return Response({
+                'region': region_name,
+                'crop': crop.crop,
+                'score': score,
+                'cost_analysis': cost_analysis
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

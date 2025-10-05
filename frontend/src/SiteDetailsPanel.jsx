@@ -10,6 +10,12 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
   const [conversation, setConversation] = useState([])
   const [currentQuestion, setCurrentQuestion] = useState('')
   const [askingQuestion, setAskingQuestion] = useState(false)
+  
+  // Cost Analysis State
+  const [costData, setCostData] = useState(null)
+  const [loadingCost, setLoadingCost] = useState(false)
+  const [costError, setCostError] = useState(null)
+  const [showDetailedCosts, setShowDetailedCosts] = useState(false)
 
   const handleClose = () => {
     setIsClosing(true)
@@ -20,6 +26,11 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
     // Reset Q&A state
     setConversation([])
     setCurrentQuestion('')
+    // Reset cost state
+    setCostData(null)
+    setLoadingCost(false)
+    setCostError(null)
+    setShowDetailedCosts(false)
     
     setTimeout(() => {
       setIsClosing(false) // Reset closing state
@@ -139,11 +150,63 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
 
     fetchAIInsights()
   }, [site, cropMatches])
+  
+  // Fetch cost analysis when a region is selected
+  useEffect(() => {
+    const fetchCostAnalysis = async () => {
+      // Only fetch if we have a site selected AND crop matches
+      if (!site || !cropMatches?.crop) {
+        setCostData(null)
+        return
+      }
+
+      // Find the match data for this region
+      const regionMatch = cropMatches?.top_matches?.find(match => 
+        (match.region_name || match.region) === site.name
+      )
+
+      if (!regionMatch) {
+        setCostData(null)
+        return
+      }
+
+      setLoadingCost(true)
+      setCostError(null)
+
+      try {
+        const response = await fetch('http://localhost:8000/api/regions/analyze_costs/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            region_name: site.name,
+            crop_name: cropMatches.crop,
+            score: regionMatch.score
+          })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setCostData(data.cost_analysis)
+        } else {
+          setCostError('Failed to load cost analysis')
+        }
+      } catch (error) {
+        console.error('Error fetching cost analysis:', error)
+        setCostError('Error connecting to cost analysis service')
+      } finally {
+        setLoadingCost(false)
+      }
+    }
+
+    fetchCostAnalysis()
+  }, [site, cropMatches])
 
   // If no site is selected, show ranked results
   if (!site && cropMatches?.top_matches) {
     return (
-      <div className="absolute top-5 right-5 w-106 max-h-[calc(100vh-40px)] overflow-y-auto z-50 rounded-[20px] bg-gray-900 shadow-2xl">
+      <div className="absolute top-5 right-5 w-116 max-h-[calc(100vh-40px)] overflow-y-auto z-50 rounded-[20px] bg-gray-900 shadow-2xl">
         <div className="text-white p-5">
           <h2 className="text-xl font-semibold mb-4 text-red-400 sticky top-0 bg-gray-900 pb-2 z-10">
             {cropMatches.crop} - Top {cropMatches.top_matches.length} Growing Regions
@@ -272,6 +335,141 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
             <div className={`text-sm font-medium text-${getCompatibilityLevel(regionMatch.score).color}-300`}>
               {getCompatibilityLevel(regionMatch.score).level} match for {cropMatches.crop}
             </div>
+          </div>
+        )}
+        
+        {/* COST ANALYSIS SECTION */}
+        {cropMatches && costData && !loadingCost && !costError && (
+          <div className="mb-6 space-y-4">
+            {/* One-Time Cost */}
+            <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 rounded-lg p-4 border-2 border-blue-500/40">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-blue-300 text-sm font-semibold mb-1">💰 One-Time Setup Cost</h3>
+                  <p className="text-gray-400 text-xs">Initial investment for infrastructure</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-blue-400">
+                    ${(costData.one_time_cost / 1000000).toFixed(2)}M
+                  </div>
+                  <p className="text-xs text-gray-400">USD</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Sustained Cost */}
+            <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 rounded-lg p-4 border-2 border-purple-500/40">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-purple-300 text-sm font-semibold mb-1">🔄 Annual Sustained Cost</h3>
+                  <p className="text-gray-400 text-xs">Yearly operational expenses</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-purple-400">
+                    ${(costData.annual_sustained_cost / 1000).toFixed(0)}K
+                  </div>
+                  <p className="text-xs text-gray-400">USD per year</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Detailed Cost Breakdown - Dropdown */}
+            <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+              <button
+                onClick={() => setShowDetailedCosts(!showDetailedCosts)}
+                className="w-full px-4 py-3 flex justify-between items-center hover:bg-gray-750 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">📊</span>
+                  <span className="text-white font-semibold text-sm">Detailed Cost Breakdown</span>
+                </div>
+                <span className={`text-gray-400 transform transition-transform ${showDetailedCosts ? 'rotate-180' : ''}`}>
+                  ▼
+                </span>
+              </button>
+              
+              {showDetailedCosts && costData.breakdown && (
+                <div className="p-4 border-t border-gray-700 bg-gray-900/50">
+                  <div className="space-y-3">
+                    {/* One-Time Costs */}
+                    <div>
+                      <h4 className="text-blue-400 font-semibold text-sm mb-2 flex items-center">
+                        <span className="mr-2">💎</span> Initial Setup Costs
+                      </h4>
+                      <div className="space-y-2 pl-2">
+                        {['transportation', 'habitat_construction', 'equipment', 'initial_supplies', 'energy_systems', 'water_recycling', 'soil_preparation', 'climate_control'].map((key) => {
+                          const item = costData.breakdown[key];
+                          if (!item) return null;
+                          return (
+                            <div key={key} className="flex justify-between items-start text-xs bg-gray-800/50 p-2 rounded">
+                              <div className="flex-1">
+                                <div className="text-white font-medium capitalize">
+                                  {key.replace(/_/g, ' ')}
+                                </div>
+                                <div className="text-gray-400 text-xs mt-0.5">{item.description}</div>
+                              </div>
+                              <div className="text-blue-300 font-bold ml-2 whitespace-nowrap">
+                                ${(item.cost / 1000000).toFixed(2)}M
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    
+                    {/* Annual Costs */}
+                    <div className="pt-3 border-t border-gray-700">
+                      <h4 className="text-purple-400 font-semibold text-sm mb-2 flex items-center">
+                        <span className="mr-2">📅</span> Annual Operating Costs
+                      </h4>
+                      <div className="space-y-2 pl-2">
+                        {['annual_energy', 'annual_water', 'annual_nutrients', 'annual_maintenance', 'annual_labor'].map((key) => {
+                          const item = costData.breakdown[key];
+                          if (!item) return null;
+                          return (
+                            <div key={key} className="flex justify-between items-start text-xs bg-gray-800/50 p-2 rounded">
+                              <div className="flex-1">
+                                <div className="text-white font-medium capitalize">
+                                  {key.replace(/annual_/g, '').replace(/_/g, ' ')}
+                                </div>
+                                <div className="text-gray-400 text-xs mt-0.5">{item.description}</div>
+                              </div>
+                              <div className="text-purple-300 font-bold ml-2 whitespace-nowrap">
+                                ${(item.cost / 1000).toFixed(0)}K
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    
+                    {/* AI Note if fallback */}
+                    {costData.note && (
+                      <div className="mt-3 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded text-xs text-yellow-300">
+                        ⚠️ {costData.note}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Loading State for Costs */}
+        {cropMatches && loadingCost && (
+          <div className="mb-6 bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mr-3"></div>
+              <span className="text-gray-300 text-sm">Calculating costs...</span>
+            </div>
+          </div>
+        )}
+        
+        {/* Error State for Costs */}
+        {cropMatches && costError && (
+          <div className="mb-6 bg-red-900/20 rounded-lg p-4 border border-red-500/30">
+            <p className="text-red-300 text-sm">⚠️ {costError}</p>
           </div>
         )}
         
