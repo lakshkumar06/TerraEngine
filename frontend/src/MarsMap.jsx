@@ -401,20 +401,7 @@ const MarsMap = () => {
         </div>
       )}
       
-      {/* Location Analysis Hint */}
-      {cropName && !selectedSite && !analyzingLocation && (
-        <div className="absolute top-5 left-5 z-40 bg-gradient-to-br from-purple-900/90 to-violet-900/80 rounded-lg p-3 border-2 border-purple-500/40 shadow-xl backdrop-blur-sm">
-          <div className="text-white">
-            <div className="font-semibold text-sm flex items-center gap-2">
-              <span>💡</span>
-              <span>Click anywhere on Mars</span>
-            </div>
-            <div className="text-xs text-purple-200 mt-1">
-              Get AI analysis for any location
-            </div>
-          </div>
-        </div>
-      )}
+
       {/* Right Panel */}
       <SiteDetailsPanel 
         site={selectedSite} 

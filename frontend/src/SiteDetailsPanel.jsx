@@ -401,14 +401,14 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedR
         
         {/* Compatibility Overview */}
         {regionMatch && cropMatches && (
-          <div className="mb-6 rounded-lg p-4 border-2 bg-gradient-to-br from-amber-900/30 to-orange-900/20 border-amber-600/40">
+          <div className="mb-6 rounded-lg">
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-lg font-semibold text-amber-300">🌱 Growing Compatibility</h3>
+              <h3 className="text-lg font-semibold text-white">Growing Compatibility</h3>
               <div className="text-3xl font-bold text-amber-400">
                 {regionMatch.score}/10
               </div>
             </div>
-            <div className="text-sm font-medium text-amber-200/80">
+            <div className="text-sm font-medium text-[#999]">
               {getCompatibilityLevel(regionMatch.score).level} match for {cropMatches.crop}
             </div>
           </div>
@@ -419,7 +419,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedR
           <div className="mb-6 space-y-4">
             {/* Header with Gemini Badge */}
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-cyan-300 text-lg font-semibold">💰 Cost Analysis</h3>
+              <h3 className="text-white text-lg font-semibold">Cost Analysis</h3>
               {costData?.enabled && (
                 <span className="px-2.5 py-1 text-xs bg-cyan-900/40 text-cyan-300 rounded-full border border-cyan-500/30 font-medium">
                   Powered by SERP API
@@ -428,33 +428,30 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedR
             </div>
             
             {/* One-Time Cost */}
-            <div className="bg-gradient-to-br from-cyan-900/30 to-blue-900/20 rounded-lg p-4 border-2 border-cyan-600/40">
+            <div className="">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-cyan-300 text-sm font-semibold mb-1">💵 One-Time Setup Cost</h3>
-                  <p className="text-cyan-200/60 text-xs">Initial investment for infrastructure</p>
+                  <h3 className="text-white text-sm font-semibold mb-1">One-Time Setup Cost</h3>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-cyan-400">
                     ${(costData.one_time_cost / 1000000).toFixed(2)}M
                   </div>
-                  <p className="text-xs text-cyan-300/60">USD</p>
                 </div>
               </div>
             </div>
             
             {/* Sustained Cost */}
-            <div className="bg-gradient-to-br from-blue-900/30 to-cyan-900/20 rounded-lg p-4 border-2 border-blue-600/40">
+            <div className="">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-blue-300 text-sm font-semibold mb-1">🔄 Annual Sustained Cost</h3>
-                  <p className="text-blue-200/60 text-xs">Yearly operational expenses</p>
+                  <h3 className="text-white text-sm font-semibold mb-1">Annual Sustained Cost</h3>
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-blue-400">
-                    ${(costData.annual_sustained_cost / 1000).toFixed(0)}K
+                    ${(costData.annual_sustained_cost / 1000).toFixed(0)}K <span className="text-xs text-blue-300/60 font-light">per year</span>
+
                   </div>
-                  <p className="text-xs text-blue-300/60">USD per year</p>
                 </div>
               </div>
             </div>
@@ -466,7 +463,6 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedR
                 className="w-full px-4 py-3 flex justify-between items-center hover:bg-slate-700/50 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">📊</span>
                   <span className="text-slate-200 font-semibold text-sm">Detailed Cost Breakdown</span>
                 </div>
                 <span className={`text-slate-400 transform transition-transform ${showDetailedCosts ? 'rotate-180' : ''}`}>
@@ -480,19 +476,19 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedR
                     {/* One-Time Costs */}
                     <div>
                       <h4 className="text-cyan-300 font-semibold text-sm mb-2 flex items-center">
-                        💎 Initial Setup Costs
+                        Initial Setup Costs
                       </h4>
-                      <div className="space-y-2 pl-2">
+                      <div className="space-y-2 pl-1">
                         {['transportation', 'habitat_construction', 'equipment', 'initial_supplies', 'energy_systems', 'water_recycling', 'soil_preparation', 'climate_control'].map((key) => {
                           const item = costData.breakdown[key];
                           if (!item) return null;
                           return (
-                            <div key={key} className="flex justify-between items-start text-xs bg-cyan-900/20 p-2 rounded border border-cyan-700/30">
+                            <div key={key} className="flex justify-between items-start text-xs  py-2 rounded">
                               <div className="flex-1">
-                                <div className="text-cyan-200 font-medium capitalize">
+                                <div className="text-white font-medium capitalize">
                                   {key.replace(/_/g, ' ')}
                                 </div>
-                                <div className="text-cyan-300/60 text-xs mt-0.5">{item.description}</div>
+                                <div className="text-[#999] text-xs mt-0.5">{item.description}</div>
                               </div>
                               <div className="text-cyan-400 font-bold ml-2 whitespace-nowrap">
                                 ${(item.cost / 1000000).toFixed(2)}M
@@ -504,21 +500,21 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedR
                     </div>
                     
                     {/* Annual Costs */}
-                    <div className="pt-3 border-t border-slate-600/50">
+                    <div className="pt-3">
                       <h4 className="text-blue-300 font-semibold text-sm mb-2 flex items-center">
-                        📅 Annual Operating Costs
+                        Annual Operating Costs
                       </h4>
-                      <div className="space-y-2 pl-2">
+                      <div className="space-y-2 pl-1">
                         {['annual_energy', 'annual_water', 'annual_nutrients', 'annual_maintenance', 'annual_labor'].map((key) => {
                           const item = costData.breakdown[key];
                           if (!item) return null;
                           return (
-                            <div key={key} className="flex justify-between items-start text-xs bg-blue-900/20 p-2 rounded border border-blue-700/30">
+                            <div key={key} className="flex justify-between items-start text-xs py-2">
                               <div className="flex-1">
-                                <div className="text-blue-200 font-medium capitalize">
+                                <div className="text-white font-medium capitalize">
                                   {key.replace(/annual_/g, '').replace(/_/g, ' ')}
                                 </div>
-                                <div className="text-blue-300/60 text-xs mt-0.5">{item.description}</div>
+                                <div className="text-[#999] text-xs mt-0.5">{item.description}</div>
                               </div>
                               <div className="text-blue-400 font-bold ml-2 whitespace-nowrap">
                                 ${(item.cost / 1000).toFixed(0)}K
@@ -529,12 +525,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedR
                       </div>
                     </div>
                     
-                    {/* AI Note if fallback */}
-                    {costData.note && (
-                      <div className="mt-3 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded text-xs text-yellow-300">
-                        ⚠️ {costData.note}
-                      </div>
-                    )}
+                  
                   </div>
                 </div>
               )}
@@ -564,7 +555,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedR
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-purple-300 text-lg font-semibold flex items-center">
-                🤖 AI Insights
+                AI Insights
               </h3>
               {aiInsights?.enabled && (
                 <span className="px-2.5 py-1 text-xs bg-purple-900/40 text-purple-300 rounded-full border border-purple-500/30 font-medium">
@@ -589,7 +580,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedR
             )}
             
             {!loadingAI && !aiError && aiInsights && (
-              <div className="bg-gradient-to-br from-purple-900/30 to-violet-900/20 rounded-lg p-5 border-2 border-purple-600/40 shadow-lg">
+              <div className="py-5">
                 <div className="prose prose-invert prose-sm max-w-none">
                   <div className="text-gray-200 whitespace-pre-wrap leading-relaxed" 
                        style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
