@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 
-const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect }) => {
+const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, userResearchedRegions = [], onRegionSelect }) => {
   const [isClosing, setIsClosing] = useState(false)
   const [aiInsights, setAiInsights] = useState(null)
   const [loadingAI, setLoadingAI] = useState(false)
@@ -105,6 +105,13 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
         return
       }
 
+      // Check if this is a clicked location with preloaded data
+      if (site.isClickedLocation && site.preloadedAIInsights) {
+        setAiInsights(site.preloadedAIInsights)
+        setLoadingAI(false)
+        return
+      }
+
       // Find the match data for this region
       const regionMatch = cropMatches?.top_matches?.find(match => 
         (match.region_name || match.region) === site.name
@@ -154,6 +161,13 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
       // Only fetch if we have a site selected AND crop matches
       if (!site || !cropMatches?.crop) {
         setCostData(null)
+        return
+      }
+
+      // Check if this is a clicked location with preloaded data
+      if (site.isClickedLocation && site.preloadedCostAnalysis) {
+        setCostData(site.preloadedCostAnalysis)
+        setLoadingCost(false)
         return
       }
 
@@ -248,6 +262,66 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
               );
             })}
           </div>
+          
+          {/* User Researched Regions Section */}
+          {userResearchedRegions && userResearchedRegions.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-700">
+              <h3 className="text-lg font-semibold mb-3 text-purple-300 flex items-center">
+                <span className="mr-2">🔬</span>
+                User Researched Regions
+                <span className="ml-2 px-2 py-0.5 text-xs bg-purple-900/40 text-purple-300 rounded-full border border-purple-500/30">
+                  {userResearchedRegions.length}
+                </span>
+              </h3>
+              
+              <div className="space-y-3 pb-4">
+                {userResearchedRegions.map((userRegion, index) => (
+                  <div 
+                    key={`user-${userRegion.name}-${index}`}
+                    className="bg-gradient-to-br from-purple-900/30 to-violet-900/20 rounded-lg p-4 cursor-pointer hover:from-purple-900/40 hover:to-violet-900/30 transition-all border-2 border-purple-600/40 hover:border-purple-500/60"
+                    onClick={() => {
+                      console.log('Selecting user-researched region:', userRegion);
+                      onRegionSelect(userRegion);
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold text-white text-sm">
+                            {userRegion.name}
+                          </h3>
+                          <span className="px-2 py-0.5 text-xs bg-purple-800/50 text-purple-200 rounded-full border border-purple-500/30">
+                            Custom Analysis
+                          </span>
+                        </div>
+                        <div className="text-xs text-purple-300/70">
+                          Lat: {typeof userRegion.latitude === 'number' ? userRegion.latitude.toFixed(2) : userRegion.latitude}°, 
+                          Lon: {typeof userRegion.longitude === 'number' ? userRegion.longitude.toFixed(2) : userRegion.longitude}°
+                        </div>
+                      </div>
+                      <div className={`text-lg font-bold ${getScoreColor(userRegion.score)}`}>
+                        {userRegion.score}/10
+                      </div>
+                    </div>
+                    
+                    <div className="text-xs text-purple-200/80 mt-2">
+                      <div className="flex flex-wrap gap-2">
+                        <span className="bg-purple-800/30 px-2 py-1 rounded border border-purple-600/30">
+                          pH: {userRegion.ph}
+                        </span>
+                        <span className="bg-purple-800/30 px-2 py-1 rounded border border-purple-600/30">
+                          Elevation: {userRegion.elevation}m
+                        </span>
+                        <span className="bg-purple-800/30 px-2 py-1 rounded border border-purple-600/30">
+                          Water: {userRegion.water_release_wt_pct}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -279,15 +353,20 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
       })
     }
     
-    if (site.ph && site.ph.includes('High')) {
-      recommendations.push({
-        type: 'info',
-        title: 'Alkaline Soil',
-        message: 'Consider acidifying treatments or select pH-tolerant crop varieties'
-      })
+    // Handle pH - can be either a number (e.g., 9.0) or a string (e.g., "High alkaline")
+    if (site.ph) {
+      const isHighPH = (typeof site.ph === 'number' && site.ph > 8.5) || 
+                       (typeof site.ph === 'string' && site.ph.toLowerCase().includes('high'))
+      if (isHighPH) {
+        recommendations.push({
+          type: 'info',
+          title: 'Alkaline Soil',
+          message: 'Consider acidifying treatments or select pH-tolerant crop varieties'
+        })
+      }
     }
     
-    if (site.terrain_type && site.terrain_type.includes('smooth')) {
+    if (site.terrain_type && typeof site.terrain_type === 'string' && site.terrain_type.toLowerCase().includes('smooth')) {
       recommendations.push({
         type: 'success',
         title: 'Suitable Terrain',
@@ -343,7 +422,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
               <h3 className="text-cyan-300 text-lg font-semibold">💰 Cost Analysis</h3>
               {costData?.enabled && (
                 <span className="px-2.5 py-1 text-xs bg-cyan-900/40 text-cyan-300 rounded-full border border-cyan-500/30 font-medium">
-                  Powered by Gemini API
+                  Powered by SERP API
                 </span>
               )}
             </div>
@@ -489,7 +568,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
               </h3>
               {aiInsights?.enabled && (
                 <span className="px-2.5 py-1 text-xs bg-purple-900/40 text-purple-300 rounded-full border border-purple-500/30 font-medium">
-                  Powered by Gemini API
+                  Powered by SERP API
                 </span>
               )}
             </div>
@@ -577,7 +656,7 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
                 💬 Ask Questions
               </h3>
               <span className="px-2.5 py-1 text-xs bg-emerald-900/40 text-emerald-300 rounded-full border border-emerald-500/30 font-medium">
-                Powered by Gemini API
+                Powered by SERP API
               </span>
             </div>
             

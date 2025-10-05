@@ -18,6 +18,7 @@ const MarsMap = () => {
   const [searchParams] = useSearchParams();
   const [selectedSite, setSelectedSite] = useState(null);
   const [regions, setRegions] = useState([]);
+  const [userResearchedRegions, setUserResearchedRegions] = useState([]); // Track user-clicked locations
   const [loading, setLoading] = useState(true);
   const [cropMatches, setCropMatches] = useState(null);
   const [cropName, setCropName] = useState(null);
@@ -284,14 +285,40 @@ const MarsMap = () => {
           const locationData = {
             ...data.location,
             score: data.compatibility_score,
-            isClickedLocation: true
+            isClickedLocation: true,
+            isUserResearched: true, // Mark as user-researched
+            // Store the pre-fetched analysis data
+            preloadedAIInsights: data.ai_insights,
+            preloadedCostAnalysis: data.cost_analysis,
+            metadata: data.metadata
           };
           setSelectedSite(locationData);
           
-          // Store the analysis data for the panel
-          locationData.aiInsights = data.ai_insights;
-          locationData.costAnalysis = data.cost_analysis;
-          locationData.metadata = data.metadata;
+          // Add to user-researched regions (if not already there)
+          setUserResearchedRegions(prev => {
+            const exists = prev.some(r => r.name === locationData.name);
+            if (!exists) {
+              return [...prev, locationData];
+            }
+            return prev;
+          });
+          
+          // Update cropMatches to include this location
+          setCropMatches({
+            ...cropMatches,
+            crop: cropName,
+            top_matches: [{
+              region_name: locationData.name,
+              region: locationData.name,
+              score: data.compatibility_score,
+              reasons: [
+                `Custom location at ${data.location.latitude.toFixed(2)}°, ${data.location.longitude.toFixed(2)}°`,
+                `Elevation: ${data.location.elevation}m`,
+                `pH: ${data.location.ph}`,
+                `Water content: ${data.location.water_release_wt_pct}%`
+              ]
+            }]
+          });
         }
       } catch (error) {
         console.error('Error analyzing location:', error);
@@ -387,6 +414,7 @@ const MarsMap = () => {
         onClose={handleClosePanel}
         cropMatches={cropMatches}
         regions={regions}
+        userResearchedRegions={userResearchedRegions}
         onRegionSelect={setSelectedSite}
       />
     </div>

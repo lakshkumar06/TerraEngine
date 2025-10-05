@@ -147,7 +147,7 @@ class MarsCropViewSet(viewsets.ViewSet):
     
     @action(detail=False, methods=['get'])
     def match_crop(self, request):
-        """Match a crop to best regions - returns top 5 by default."""
+        """Match a crop to best regions using Gemini AI - returns top 5 by default."""
         crop_name = request.GET.get('crop')
         top_n = int(request.GET.get('top_n', 5))  # Default to 5 regions
         
@@ -161,21 +161,51 @@ class MarsCropViewSet(viewsets.ViewSet):
                 return Response({'error': f'Crop "{crop_name}" not found'}, status=status.HTTP_404_NOT_FOUND)
             
             # Get all regions
-            regions = list(MarsRegion.objects.all())
+            regions_queryset = MarsRegion.objects.all()
+            regions_list = []
+            for r in regions_queryset:
+                regions_list.append({
+                    'name': r.region,
+                    'region': r.region,
+                    'latitude': r.latitude_deg,
+                    'longitude': r.longitude_deg,
+                    'elevation': r.elevation_m,
+                    'elevation_m': r.elevation_m,
+                    'ph': r.ph,
+                    'perchlorate_wt_pct': r.perchlorate_wt_pct,
+                    'water_release_wt_pct': r.water_release_wt_pct,
+                    'major_minerals': r.major_minerals,
+                    'terrain_type': r.terrain_type,
+                    'notes': r.notes
+                })
             
-            # Run matching algorithm
-            matches = match_crop_to_regions(crop, regions, top_n)
+            # Prepare crop details for Gemini
+            crop_details = {
+                'ph_range': crop.preferred_ph_range,
+                'soil_texture': crop.terrain_soil_texture,
+                'temperature_range': crop.temperature_range_c,
+                'moisture_regime': crop.moisture_regime
+            }
             
-            # Get detailed region information for each match
+            # Use Gemini AI to recommend regions
+            from .gemini_integration import gemini_engine
+            gemini_recommendations = gemini_engine.recommend_regions_for_crop(
+                crop_name=crop.crop,
+                crop_details=crop_details,
+                all_regions=regions_list
+            )
+            
+            # Get detailed region information for Gemini-recommended regions
             detailed_matches = []
-            for match in matches:
-                region = MarsRegion.objects.filter(region=match['region']).first()
+            for rec in gemini_recommendations[:top_n]:
+                region_name = rec.get('region', rec) if isinstance(rec, dict) else rec
+                region = MarsRegion.objects.filter(region__icontains=region_name).first()
                 if region:
                     detailed_matches.append({
                         'region_id': region.id,
                         'region_name': region.region,
-                        'score': match['score'],
-                        'reasons': match['reasons'],
+                        'score': rec.get('score', 7.5) if isinstance(rec, dict) else 7.5,
+                        'reasons': [rec.get('reason', 'AI-recommended based on crop requirements')] if isinstance(rec, dict) else ['AI-recommended'],
                         'latitude': region.latitude_deg,
                         'longitude': region.longitude_deg,
                         'elevation': region.elevation_m,
@@ -199,7 +229,7 @@ class MarsCropViewSet(viewsets.ViewSet):
                     'flowered_seed': crop.flowered_seed
                 },
                 'top_matches': detailed_matches,
-                'total_regions_analyzed': len(regions)
+                'total_regions_analyzed': len(regions_list)
             }, status=status.HTTP_200_OK)
             
         except Exception as e:

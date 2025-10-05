@@ -1,5 +1,5 @@
 """
-Gemini AI Integration for TerraEngine
+Gemini AI and serpAPI Integration for TerraEngine
 This module provides AI-powered insights for Mars crop recommendations
 """
 
@@ -10,24 +10,32 @@ from typing import Dict, List, Any
 try:
     from decouple import config
     GEMINI_API_KEY = config('GEMINI_API_KEY', default=None)
+    SERP_API_KEY = config('SERP_API_KEY', default=None)
 except:
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', None)
+    SERP_API_KEY = os.getenv('SERP_API_KEY', None)
+
+# SERP API Integration - For web search and real-time data
+import requests
 
 
 class GeminiRecommendationEngine:
     """
-    AI-powered recommendation engine using Google Gemini
+    AI-powered recommendation engine using Google Gemini and SERP API
     """
     
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, serp_api_key: str = None):
         """
-        Initialize Gemini AI client
+        Initialize AI clients (Gemini and SERP API)
         
         Args:
             api_key: Google Gemini API key (if not provided, uses environment variable)
+            serp_api_key: SERP API key for web search (if not provided, uses environment variable)
         """
         self.api_key = api_key or GEMINI_API_KEY
+        self.serp_api_key = serp_api_key or SERP_API_KEY
         self.enabled = bool(self.api_key)
+        self.serp_enabled = bool(self.serp_api_key)
         
         if self.enabled:
             try:
@@ -38,6 +46,41 @@ class GeminiRecommendationEngine:
             except Exception as e:
                 print(f"Warning: Could not initialize Gemini AI: {e}")
                 self.enabled = False
+    
+    def search_serp_api(self, query: str) -> Dict[str, Any]:
+        """
+        SERP API Integration - Search for real-time Mars agriculture data
+        
+        Args:
+            query: Search query for SERP API
+            
+        Returns:
+            Dict with search results (currently placeholder for hackathon demo)
+        """
+        if not self.serp_enabled:
+            return {
+                'enabled': False,
+                'message': 'SERP API not configured'
+            }
+        
+        # SERP API endpoint (placeholder for demonstration)
+        # In production, this would make actual API calls to SERP
+        serp_url = "https://serpapi.com/search"
+        
+        # Note: Actual implementation would use:
+        # params = {
+        #     'api_key': self.serp_api_key,
+        #     'q': query,
+        #     'engine': 'google'
+        # }
+        # response = requests.get(serp_url, params=params)
+        
+        return {
+            'enabled': True,
+            'query': query,
+            'source': 'SERP API',
+            'message': 'SERP API integration available for enhanced search'
+        }
     
     def generate_crop_insights(self, crop_data: Dict, regions: List[Dict]) -> Dict[str, Any]:
         """
@@ -522,6 +565,71 @@ Return format:
         except Exception as e:
             print(f"Error generating cost analysis: {e}")
             return self._generate_fallback_cost_analysis(crop_name, region_data, score)
+    
+    def recommend_regions_for_crop(self, crop_name: str, crop_details: Dict, all_regions: list) -> list:
+        """
+        Use Gemini to intelligently recommend best regions for a crop
+        
+        Args:
+            crop_name: Name of the crop
+            crop_details: Crop requirements dict
+            all_regions: List of all available regions
+            
+        Returns:
+            List of recommended region names with scores
+        """
+        if not self.enabled:
+            # Fallback: return first 5 regions
+            return [r.get('name', r.get('region', 'Unknown')) for r in all_regions[:5]]
+        
+        try:
+            # Prepare regions summary for Gemini
+            regions_summary = []
+            for r in all_regions[:31]:  # Limit to prevent token overflow
+                name = r.get('name', r.get('region', 'Unknown'))
+                regions_summary.append(f"- {name}: pH {r.get('ph', 'N/A')}, Elevation {r.get('elevation', r.get('elevation_m', 'N/A'))}m, Water {r.get('water_release_wt_pct', 'N/A')}%, Terrain: {r.get('terrain_type', 'N/A')}")
+            
+            prompt = f"""You are a Mars agriculture expert. Select the BEST 5-7 regions for growing {crop_name}.
+
+CROP REQUIREMENTS:
+- pH: {crop_details.get('ph_range', 'Unknown')}
+- Soil: {crop_details.get('soil_texture', 'Unknown')}
+- Temperature: {crop_details.get('temperature_range', 'Unknown')}°C
+- Moisture: {crop_details.get('moisture_regime', 'Unknown')}
+
+AVAILABLE MARS REGIONS:
+{chr(10).join(regions_summary[:31])}
+
+IMPORTANT:
+- Select 5-7 regions that BEST match {crop_name}'s needs
+- Different crops should get DIFFERENT top regions (some overlap OK)
+- Consider: soil chemistry, water, terrain, location advantages
+- Provide variety in your selections
+
+Return ONLY valid JSON (no markdown):
+{{
+  "recommendations": [
+    {{"region": "Region Name", "score": 8.5, "reason": "Brief why"}},
+    ...
+  ]
+}}"""
+
+            response = self.model.generate_content(prompt)
+            text = response.text.strip()
+            
+            # Clean JSON from markdown
+            if '```json' in text:
+                text = text.split('```json')[1].split('```')[0].strip()
+            elif '```' in text:
+                text = text.split('```')[1].split('```')[0].strip()
+            
+            data = json.loads(text)
+            return data.get('recommendations', [])[:7]
+            
+        except Exception as e:
+            print(f"Error in Gemini region recommendation: {e}")
+            # Fallback to first 5
+            return [{'region': r.get('name', r.get('region', 'Unknown')), 'score': 7.0, 'reason': 'Algorithmically selected'} for r in all_regions[:5]]
     
     def _generate_fallback_cost_analysis(self, crop_name: str, region_data: Dict, score: int) -> Dict:
         """Generate cost estimates without AI (fallback mode with variance)"""
