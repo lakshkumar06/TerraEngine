@@ -110,19 +110,27 @@ const MarsMap = () => {
     // Create vector source for markers
     const vectorSource = new VectorSource();
 
-    // Helper function to parse coordinates
-    const parseCoordinates = (coordStr) => {
-      if (!coordStr) return null;
+    // Helper function to parse coordinates - handles both strings and numbers
+    const parseCoordinates = (coord) => {
+      if (coord === null || coord === undefined) return null;
       
-      // Handle format like "4.5895°S" or "137.4417°E" or "-4.5895"
-      const match = coordStr.match(/(-?\d+\.?\d*)°?\s*([NSEW]?)/);
-      if (match) {
-        let value = parseFloat(match[1]);
-        const direction = match[2];
-        if (direction === 'S' || direction === 'W') value = -value;
-        return value;
+      // If it's already a number, return it
+      if (typeof coord === 'number') return coord;
+      
+      // If it's a string, parse it
+      if (typeof coord === 'string') {
+        // Handle format like "4.5895°S" or "137.4417°E" or "-4.5895"
+        const match = coord.match(/(-?\d+\.?\d*)°?\s*([NSEW]?)/);
+        if (match) {
+          let value = parseFloat(match[1]);
+          const direction = match[2];
+          if (direction === 'S' || direction === 'W') value = -value;
+          return value;
+        }
+        return parseFloat(coord);
       }
-      return parseFloat(coordStr);
+      
+      return null;
     };
 
     // Add markers from regions data
@@ -215,17 +223,26 @@ const MarsMap = () => {
         };
       }
       
-      // Parse coordinates
-      const parseCoord = (coordStr) => {
-        if (!coordStr) return null;
-        const match = coordStr.match(/(-?\d+\.?\d*)°?\s*([NSEW]?)/);
-        if (match) {
-          let value = parseFloat(match[1]);
-          const direction = match[2];
-          if (direction === 'S' || direction === 'W') value = -value;
-          return value;
+      // Parse coordinates - handles both strings ("4.5°S") and numbers (4.5)
+      const parseCoord = (coord) => {
+        if (coord === null || coord === undefined) return null;
+        
+        // If it's already a number, return it
+        if (typeof coord === 'number') return coord;
+        
+        // If it's a string, parse it
+        if (typeof coord === 'string') {
+          const match = coord.match(/(-?\d+\.?\d*)°?\s*([NSEW]?)/);
+          if (match) {
+            let value = parseFloat(match[1]);
+            const direction = match[2];
+            if (direction === 'S' || direction === 'W') value = -value;
+            return value;
+          }
+          return parseFloat(coord);
         }
-        return parseFloat(coordStr);
+        
+        return null;
       };
       
       const lat = parseCoord(selectedSite.latitude);
