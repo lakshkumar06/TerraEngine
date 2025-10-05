@@ -8,7 +8,13 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
 
   const handleClose = () => {
     setIsClosing(true)
+    // Reset AI insights state
+    setAiInsights(null)
+    setLoadingAI(false)
+    setAiError(null)
+    
     setTimeout(() => {
+      setIsClosing(false) // Reset closing state
       onClose()
     }, 300) // Match animation duration
   }
@@ -75,22 +81,25 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
   // If no site is selected, show ranked results
   if (!site && cropMatches?.top_matches) {
     return (
-      <div className={`absolute top-5 right-5 w-106 overflow-y-scroll  bottom-5  z-50 rounded-[20px] bg-gray-900`}>
-        <div className="h-full  text-white p-5 ">
-          <h2 className="text-xl font-semibold mb-4 text-red-400">
-            {cropMatches.crop} - Best Growing Regions
+      <div className="absolute top-5 right-5 w-106 max-h-[calc(100vh-40px)] overflow-y-auto z-50 rounded-[20px] bg-gray-900 shadow-2xl">
+        <div className="text-white p-5">
+          <h2 className="text-xl font-semibold mb-4 text-red-400 sticky top-0 bg-gray-900 pb-2 z-10">
+            {cropMatches.crop} - Top {cropMatches.top_matches.length} Growing Regions
           </h2>
           
-          <div className="space-y-3">
+          <div className="space-y-3 pb-4">
             {cropMatches.top_matches.map((match, index) => {
               const regionName = match.region_name || match.region;
               return (
                 <div 
-                  key={index} 
-                  className="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition-colors"
+                  key={`${regionName}-${index}`}
+                  className="bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700 transition-colors border border-gray-700 hover:border-red-500"
                   onClick={() => {
                     const region = regions.find(r => r.name === regionName || r.name === match.region);
-                    if (region) onRegionSelect(region);
+                    if (region) {
+                      console.log('Selecting region:', region);
+                      onRegionSelect(region);
+                    }
                   }}
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -176,13 +185,13 @@ const SiteDetailsPanel = ({ site, onClose, cropMatches, regions, onRegionSelect 
   }
 
   return (
-    <div className={`absolute top-5 right-5 w-106 overflow-y-scroll bottom-5 z-50 rounded-[20px] bg-gray-900 ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
-      <div className="h-full bg-gray-900 text-white p-5 rounded-[20px]">
+    <div className={`absolute top-5 right-5 w-106 max-h-[calc(100vh-40px)] overflow-y-auto z-50 rounded-[20px] bg-gray-900 shadow-2xl ${isClosing ? 'animate-slide-out-right' : 'animate-slide-in-right'}`}>
+      <div className="text-white p-5">
         <button 
           onClick={handleClose}
-          className="bg-red-500 text-white border-none px-4 py-2 rounded cursor-pointer mb-5 transition-colors duration-300 hover:bg-red-600"
+          className="bg-red-500 text-white border-none px-4 py-2 rounded cursor-pointer mb-5 transition-colors duration-300 hover:bg-red-600 sticky top-0 z-20"
         >
-          Close
+          ← Back to List
         </button>
         
         <h2 className="text-red-500 mb-5 text-xl font-bold">

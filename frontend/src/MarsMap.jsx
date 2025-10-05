@@ -229,8 +229,10 @@ const MarsMap = () => {
     }
   }, [selectedSite]);
 
-  // Function to zoom back out
+  // Function to zoom back out and return to list view
   const handleClosePanel = () => {
+    console.log('Closing panel, returning to list view');
+    
     if (mapInstanceRef.current && previousViewRef.current) {
       const view = mapInstanceRef.current.getView();
       
@@ -241,10 +243,13 @@ const MarsMap = () => {
         duration: 1000
       });
       
-      // Clear saved view
-      previousViewRef.current = null;
+      // Clear saved view after animation
+      setTimeout(() => {
+        previousViewRef.current = null;
+      }, 1000);
     }
     
+    // Clear selected site to return to list view
     setSelectedSite(null);
   };
 
